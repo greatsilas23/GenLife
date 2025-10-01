@@ -17,7 +17,9 @@ posts = [
         "user": "Alex Style", 
         "outfit": "Perfect summer dress with white sneakers for brunch! Feeling confident and comfy 💫", 
         "stars": 5, 
-        "comments": [],
+        "comments": [
+            {"user": "Sarah", "text": "Love this look!", "created_at": "2024-01-15T11:00:00"}
+        ],
         "created_at": "2024-01-15T10:30:00",
         "location": "Nairobi",
         "image": None
@@ -66,6 +68,7 @@ discussions = [
     }
 ]
 
+# Updated merchants with proper shop item images (using icons instead of broken URLs)
 merchants = [
     {"id": 1, "name": "Nairobi Fashion Hub", "region": "Nairobi", "products": [
         {"name": "Classic White Tee", "icon": "👕", "category": "top", "price_band": "low"},
@@ -199,7 +202,7 @@ def score_outfit(items, occasion, weather, budget, style):
     if occasion == "work" and style in ["Formal", "Smart Casual"]: score += 5
     if occasion == "casual" and style in ["Casual", "Streetwear"]: score += 5
     if occasion in ["date", "event"] and style in ["Formal", "Smart Casual"]: score += 3
-    if occasion == "cultural": score += 2  # New cultural occasion
+    if occasion == "cultural": score += 2
     
     # Weather scoring
     if weather == "hot" and any(i["category"] in ["dress", "top"] for i in items): score += 3
@@ -216,8 +219,8 @@ def root():
     return jsonify({
         "name": "Enhanced Wardrobe AI API",
         "status": "running",
-        "version": "2.0",
-        "features": ["image_upload", "community_discussions", "location_map", "african_heritage"],
+        "version": "2.1",
+        "features": ["image_upload", "comments_system", "location_map", "african_heritage", "fixed_star_rating"],
         "endpoints": ["/api/wardrobe", "/api/posts", "/api/dresser", "/api/shops/search", "/api/community", "/api/locations"],
         "wardrobe_items": len(wardrobe),
         "posts": len(posts),
@@ -242,6 +245,14 @@ def wardrobe_api():
     if any(w["name"].lower() == name.lower() for w in wardrobe):
         return jsonify({"error": "Item with this name already exists"}), 400
 
+    # Process image if provided
+    image_data = data.get("image")
+    processed_image = None
+    if image_data:
+        processed_image, error = process_image(image_data)
+        if error:
+            return jsonify({"error": error}), 400
+
     item = {
         "id": get_next_id(wardrobe),
         "name": name,
@@ -251,7 +262,8 @@ def wardrobe_api():
         "price_band": data.get("price_band", "medium"),
         "added_date": datetime.now().isoformat(),
         "worn_count": 0,
-        "heritage": data.get("heritage", False)  # Flag for African heritage items
+        "heritage": data.get("heritage", False),
+        "image": processed_image
     }
     wardrobe.append(item)
     return jsonify(item), 201
@@ -306,7 +318,6 @@ def ai_dresser():
 
     # Fallback rule-based selection
     if not outfit:
-        # Categorize items
         tops = [i for i in wardrobe if i["category"] == "top"]
         bottoms = [i for i in wardrobe if i["category"] == "bottom"]
         dresses = [i for i in wardrobe if i["category"] == "dress"]
@@ -314,30 +325,25 @@ def ai_dresser():
         outerwear = [i for i in wardrobe if i["category"] == "outerwear"]
         accessories = [i for i in wardrobe if i["category"] == "accessory"]
 
-        # Choose outfit based on occasion and weather
         if dresses and random.random() < 0.3:
             outfit.append(random.choice(dresses))
             if shoes: outfit.append(random.choice(shoes))
         else:
             if tops: outfit.append(random.choice(tops))
-            if bottoms: outfit.append(random.choice(bottoms))
+            if bottoms: outfit.append(bottoms[0] if bottoms else None)
             if shoes: outfit.append(random.choice(shoes))
 
-        # Add outerwear for cool weather or formal occasions
         if (weather in ["cool", "mild"] or occasion in ["work", "event"]) and outerwear:
             outfit.append(random.choice(outerwear))
             
-        # Add accessories for special occasions
         if occasion in ["date", "event", "cultural"] and accessories:
             outfit.append(random.choice(accessories))
 
-        # Fallback if categories are missing
         if not outfit and wardrobe:
             outfit = random.sample(wardrobe, min(3, len(wardrobe)))
 
     outfit_str = " + ".join([f'{i["icon"]} {i["name"]}' for i in outfit])
     
-    # Enhanced tips including cultural occasions
     tips = [
         "Choose colors that complement each other",
         "Layer pieces for changing weather",
@@ -354,7 +360,8 @@ def ai_dresser():
         "outfit": outfit_str,
         "tip": random.choice(tips),
         "weather": weather,
-        "occasion": occasion
+        "occasion": occasion,
+        "wardrobe": wardrobe
     })
 
 @app.route("/api/posts", methods=["GET", "POST"])
@@ -370,6 +377,7 @@ def posts_api():
     user_name = sanitize_text(data.get("user", "Anonymous")).strip()
     location = data.get("location", "Nairobi")
     image_data = data.get("image")
+    purchase_info = sanitize_text(data.get("purchaseInfo", "")).strip()
     
     if not outfit_text:
         return jsonify({"error": "Outfit description cannot be empty"}), 400
@@ -389,11 +397,11 @@ def posts_api():
         "comments": [],
         "created_at": datetime.now().isoformat(),
         "location": location,
-        "image": processed_image
+        "image": processed_image,
+        "purchaseInfo": purchase_info if purchase_info else None
     }
     posts.append(post)
     
-    # Update user location
     update_user_location(user_name, location)
     
     return jsonify(post), 201
@@ -403,14 +411,46 @@ def posts_api():
 def rate_post(post_id):
     global posts
     data = request.json or {}
-    stars = min(5, max(1, data.get("stars", 5)))  # Ensure stars are between 1-5
+    stars = min(5, max(1, data.get("stars", 1)))  # Now defaults to 1 star
     
     post = next((p for p in posts if p["id"] == post_id), None)
     if not post:
         return jsonify({"error": "Post not found"}), 404
     
-    post["stars"] = stars
-    return jsonify({"message": f"Rated {stars} stars!", "stars": post["stars"]})
+    # Increment stars by 1 instead of setting to 5
+    post["stars"] = post.get("stars", 0) + stars
+    return jsonify({"message": f"Added {stars} star!", "stars": post["stars"]})
+
+@app.route("/api/posts/<int:post_id>/comments", methods=["GET", "POST"])
+@rate_limit()
+def post_comments(post_id):
+    global posts
+    post = next((p for p in posts if p["id"] == post_id), None)
+    if not post:
+        return jsonify({"error": "Post not found"}), 404
+    
+    if request.method == "GET":
+        return jsonify({"comments": post.get("comments", [])})
+    
+    # POST - Add comment
+    data = request.json or {}
+    user = sanitize_text(data.get("user", "Anonymous")).strip()
+    text = sanitize_text(data.get("text", "")).strip()
+    
+    if not text:
+        return jsonify({"error": "Comment text cannot be empty"}), 400
+    
+    if "comments" not in post:
+        post["comments"] = []
+    
+    comment = {
+        "user": user,
+        "text": text,
+        "created_at": datetime.now().isoformat()
+    }
+    post["comments"].append(comment)
+    
+    return jsonify(comment), 201
 
 @app.route("/api/community", methods=["GET", "POST"])
 @rate_limit()
@@ -448,10 +488,8 @@ def community_api():
 def locations_api():
     global user_locations
     if request.method == "GET":
-        # Return recent user locations for map
         return jsonify({"locations": user_locations})
     
-    # POST - Update user location
     data = request.json or {}
     name = sanitize_text(data.get("name", "")).strip()
     location = data.get("location", "Nairobi")
@@ -474,7 +512,6 @@ def update_user_location(name, location):
     
     coords = coords_map.get(location, coords_map['Nairobi'])
     
-    # Update existing user or add new one
     existing_user = next((u for u in user_locations if u["name"] == name), None)
     if existing_user:
         existing_user["location"] = location
@@ -495,18 +532,15 @@ def update_user_location(name, location):
 def search_shops():
     region = request.args.get("region", "Nairobi")
     category = request.args.get("category", "")
-    heritage_type = request.args.get("heritage", "")  # New parameter for heritage items
+    heritage_type = request.args.get("heritage", "")
     
     results = []
     for merchant in merchants:
-        # Include merchants from the specified region or heritage stores
         if merchant["region"] == region or "Heritage" in merchant["name"]:
             for product in merchant["products"]:
-                # Filter by category if specified
                 if category and product["category"] != category:
                     continue
                 
-                # Filter by heritage type if specified
                 if heritage_type:
                     heritage_items = {
                         "kente": ["headband", "bow tie", "belt"],
@@ -524,9 +558,8 @@ def search_shops():
                     "id": len(results) + 1
                 })
     
-    # Shuffle results for variety
     random.shuffle(results)
-    return jsonify({"results": results[:20]})  # Limit to 20 items
+    return jsonify({"results": results[:20]})
 
 @app.route("/api/heritage", methods=["GET"])
 @rate_limit()
@@ -554,6 +587,11 @@ def heritage_api():
             {"name": "Maasai Beaded Necklace", "icon": "📿", "category": "accessory", "price_band": "medium", "merchant": "Maasai Crafts Collective"},
             {"name": "Traditional Beaded Bracelet", "icon": "💎", "category": "accessory", "price_band": "low", "merchant": "Handmade Kenya"},
             {"name": "Ethnic Beaded Earrings", "icon": "💍", "category": "accessory", "price_band": "low", "merchant": "Cultural Jewelry Store"}
+        ],
+        "cologne": [
+            {"name": "Safari Essence Cologne", "icon": "🌬️", "category": "cologne", "price_band": "medium", "merchant": "African Scents"},
+            {"name": "Nile Breeze Fragrance", "icon": "🌬️", "category": "cologne", "price_band": "high", "merchant": "Luxury Scents KE"},
+            {"name": "Savanna Mist Cologne", "icon": "🌬️", "category": "cologne", "price_band": "medium", "merchant": "Modern Fragrances"}
         ]
     }
     
@@ -572,7 +610,6 @@ def profile_api():
     if request.method == "GET":
         return jsonify(profile)
     
-    # POST - Update profile
     data = request.json or {}
     profile.update({
         "user": sanitize_text(data.get("user", profile["user"])),
@@ -586,7 +623,6 @@ def profile_api():
 @rate_limit()
 def weather_api():
     city = request.args.get("city", "Nairobi")
-    # Mock weather data for Kenyan cities
     weather_data = {
         "Nairobi": {"temp_c": random.randint(18, 26), "condition": "Partly Cloudy"},
         "Mombasa": {"temp_c": random.randint(25, 32), "condition": "Sunny"},
@@ -605,7 +641,6 @@ def weather_api():
 @app.route("/api/stats", methods=["GET"])
 @rate_limit()
 def stats_api():
-    # Calculate comprehensive statistics
     total_items = len(wardrobe)
     categories = {}
     colors = set()
@@ -620,9 +655,9 @@ def stats_api():
         if item.get("heritage", False):
             heritage_count += 1
     
-    # Calculate community stats
     total_discussions = len(discussions)
     total_replies = sum(d.get("replies", 0) for d in discussions)
+    total_comments = sum(len(p.get("comments", [])) for p in posts)
     
     return jsonify({
         "wardrobe": {
@@ -634,8 +669,10 @@ def stats_api():
         },
         "social": {
             "total_posts": len(posts),
+            "total_stars": sum(p.get("stars", 0) for p in posts),
             "avg_post_stars": sum(p.get("stars", 0) for p in posts) / max(len(posts), 1),
-            "posts_with_images": len([p for p in posts if p.get("image")])
+            "posts_with_images": len([p for p in posts if p.get("image")]),
+            "total_comments": total_comments
         },
         "community": {
             "total_discussions": total_discussions,
@@ -648,7 +685,6 @@ def stats_api():
         }
     })
 
-# Error handlers
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({"error": "Endpoint not found"}), 404
@@ -666,7 +702,7 @@ def internal_error(error):
     return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == "__main__":
-    print("🚀 Starting Enhanced Wardrobe AI Server...")
+    print("🚀 Starting Enhanced Wardrobe AI Server (FIXED VERSION)...")
     print("📱 Frontend: Save index.html and open in browser")
     print("🔗 API Base: http://127.0.0.1:5000")
     print("✅ CORS enabled for frontend connection")
@@ -675,32 +711,31 @@ if __name__ == "__main__":
     print("🗺️  Location tracking: Enabled")
     print("👥 Community features: Enabled")
     print("🌍 African heritage items: Available")
+    print("💬 Comments system: FIXED and functional")
+    print("⭐ Star rating: FIXED (1 star per click)")
+    print("🛍️  Shop items: Using emoji icons (no broken image URLs)")
     print("\n📋 Available endpoints:")
-    print("  GET  /                     - API status and features")
-    print("  GET  /api/wardrobe         - Get wardrobe items") 
-    print("  POST /api/wardrobe         - Add wardrobe item")
-    print("  GET  /api/posts            - Get social posts")
-    print("  POST /api/posts            - Create new post (with image support)")
-    print("  POST /api/posts/{id}/rate  - Rate a post (stars only)")
-    print("  GET  /api/dresser          - Get AI outfit suggestion")
-    print("  GET  /api/shops/search     - Search shop items")
-    print("  GET  /api/community        - Get community discussions")
-    print("  POST /api/community        - Create new discussion")
-    print("  GET  /api/locations        - Get user locations for map")
-    print("  POST /api/locations        - Update user location")
-    print("  GET  /api/heritage         - Get African heritage items")
-    print("  GET  /api/weather          - Get weather data")
-    print("  GET  /api/stats            - Get comprehensive app statistics")
-    print("\n🎯 Enhanced features ready:")
-    print("  📸 Real image uploads (processed and optimized)")
-    print("  🌍 African heritage fashion categories")
-    print("  👥 Community discussions and challenges")
-    print("  🗺️  User location mapping")
-    print("  ⭐ Stars-only rating system")
-    print("  🔍 Enhanced search and filtering")
-    print("\n🎉 Ready to serve requests!")
+    print("  GET  /                          - API status")
+    print("  GET  /api/wardrobe              - Get wardrobe items") 
+    print("  POST /api/wardrobe              - Add wardrobe item")
+    print("  GET  /api/posts                 - Get social posts")
+    print("  POST /api/posts                 - Create new post")
+    print("  POST /api/posts/{id}/rate       - Rate a post (1 star)")
+    print("  GET  /api/posts/{id}/comments   - Get post comments")
+    print("  POST /api/posts/{id}/comments   - Add comment to post")
+    print("  GET  /api/dresser               - Get AI outfit suggestion")
+    print("  GET  /api/shops/search          - Search shop items")
+    print("  GET  /api/community             - Get discussions")
+    print("  GET  /api/locations             - Get user locations")
+    print("  GET  /api/heritage              - Get heritage items")
+    print("  GET  /api/stats                 - Get app statistics")
+    print("\n🎉 All fixes applied:")
+    print("  ✅ Stars now add 1 per click (not 5)")
+    print("  ✅ Comments are fully functional")
+    print("  ✅ Shop items use emoji icons")
+    print("  ✅ Wardrobe items can have real uploaded images")
+    print("  ✅ Posts can have real uploaded images")
+    print("\n🔥 Ready to serve requests!")
     
-    # Configure max content length for file uploads
-    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max request size
-    
+    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
     app.run(debug=True, host="127.0.0.1", port=5000)
