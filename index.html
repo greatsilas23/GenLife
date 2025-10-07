@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wardrobe AI - Enhanced</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      background: #000; 
+      color: #fff; 
+      overflow-x: hidden;
+    }
+    
+    /* Loading Screen */
+    .loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      transition: opacity 0.5s;
+    }
+    .loading-screen.hidden { opacity: 0; pointer-events: none; }
+    .loading-quote {
+      font-size: 1.5rem;
+      text-align: center;
+      max-width: 600px;
+      padding: 2rem;
+      font-style: italic;
+      opacity: 0.9;
+    }
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #fff;
+      border-top-color: #ff006e;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    /* Login Screen */
+    .login-screen { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      min-height: 100vh; 
+      padding: 2rem; 
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+    .login-card { 
+      background: rgba(0,0,0,0.8); 
+      padding: 2rem; 
+      border-radius: 20px; 
+      width: 100%; 
+      max-width: 400px; 
+      backdrop-filter: blur(10px); 
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .login-logo { 
+      text-align: center; 
+      font-size: 3rem; 
+      margin-bottom: 1rem; 
+      background: linear-gradient(45deg, #ff006e, #8338ec); 
+      -webkit-background-clip: text; 
+      -webkit-text-fill-color: transparent; 
+    }
+    .login-title { 
+      text-align: center; 
+      font-size: 1.5rem; 
+      margin-bottom: 2rem; 
+      font-weight: 600;
+    }
+    .login-input { 
+      width: 100%; 
+      padding: 1rem; 
+      margin-bottom: 1rem; 
+      background: rgba(255,255,255,0.1); 
+      border: 1px solid rgba(255,255,255,0.2); 
+      border-radius: 12px; 
+      color: white; 
+      font-size: 1rem;
+    }
+    .login-input::placeholder { color: rgba(255,255,255,0.7); }
+    .login-input:focus { 
+      outline: none; 
+      border-color: #ff006e; 
+      box-shadow: 0 0 0 2px rgba(255,0,110,0.2);
+    }
+    .login-btn { 
+      width: 100%; 
+      padding: 1rem; 
+      background: linear-gradient(45deg, #ff006e, #8338ec); 
+      border: none; 
+      border-radius: 12px; 
+      color: white; 
+      font-size: 1rem; 
+      font-weight: 600; 
+      cursor: pointer; 
+      transition: transform 0.2s;
+    }
+    .login-btn:hover { transform: scale(1.02); }
+    
+    /* Main App */
+    .app { display: none; }
+    .app.active { display: block; }
+    
+    /* Header */
+    .header { 
+      position: fixed; 
+      top: 0; 
+      width: 100%; 
+      height: 60px; 
+      background: rgba(0,0,0,0.9); 
+      backdrop-filter: blur(10px); 
+      z-index: 100; 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      padding: 0 1rem;
+      border-bottom: 1px solid #333;
+    }
+    .logo { 
+      font-size: 1.2rem; 
+      font-weight: 700; 
+      background: linear-gradient(45deg, #ff006e, #8338ec); 
+      -webkit-background-clip: text; 
+      -webkit-text-fill-color: transparent; 
+    }
+    .user-info { 
+      display: flex; 
+      align-items: center; 
+      gap: 0.5rem; 
+      font-size: 0.9rem;
+    }
+    .logout-btn { 
+      background: #333; 
+      border: none; 
+      color: white; 
+      padding: 0.5rem 1rem; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-size: 0.8rem;
+    }
+    
+    /* Main Content */
+    .main { padding-top: 60px; padding-bottom: 80px; min-height: 100vh; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    /* Explore Feed Styles */
+    .feed-container { max-width: 500px; margin: 0 auto; padding: 1rem; }
+    .post { 
+      background: #111; 
+      margin: 1rem 0; 
+      border-radius: 12px; 
+      overflow: hidden;
+      border: 1px solid #333;
+    }
+    .post-header { 
+      display: flex; 
+      align-items: center; 
+      padding: 1rem; 
+      gap: 0.75rem; 
+    }
+    .avatar { 
+      width: 40px; 
+      height: 40px; 
+      border-radius: 50%; 
+      background: linear-gradient(45deg, #ff006e, #8338ec); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-weight: bold; 
+      color: white;
+    }
+    .post-user { font-weight: 600; }
+    .post-time { color: #888; font-size: 0.85rem; }
+    .post-outfit { 
+      padding: 0 1rem; 
+      font-size: 1.1rem; 
+      line-height: 1.4; 
+      margin-bottom: 0.5rem;
+    }
+    .post-purchase {
+      padding: 0 1rem 1rem;
+      font-size: 0.9rem;
+      color: #888;
+    }
+    .post-purchase a {
+      color: #ff006e;
+      text-decoration: none;
+    }
+    
+    /* Image Upload Styles */
+    .post-image-container { 
+      position: relative;
+      height: 300px; 
+      margin: 0 1rem 1rem 1rem; 
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .post-image { 
+      width: 100%;
+      height: 100%; 
+      object-fit: cover;
+      background: linear-gradient(135deg, #667eea, #764ba2); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-size: 4rem; 
+    }
+    .upload-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: opacity 0.3s;
+    }
+    .upload-overlay:hover { opacity: 0.9; }
+    .upload-text { margin-top: 1rem; font-size: 1rem; }
+    
+    .post-actions { 
+      display: flex; 
+      justify-content: space-between; 
+      padding: 0 1rem 1rem; 
+      align-items: center;
+    }
+    .action-buttons { display: flex; gap: 1rem; }
+    .action-btn { 
+      background: none; 
+      border: none; 
+      color: #fff; 
+      font-size: 1.2rem; 
+      cursor: pointer; 
+      transition: transform 0.1s;
+    }
+    .action-btn:hover { transform: scale(1.1); }
+    .action-btn.rated { color: #fbbf24; }
+    .post-stats { color: #888; font-size: 0.85rem; }
+    
+    /* Create Post */
+    .create-post { 
+      background: #111; 
+      border-radius: 12px; 
+      padding: 1rem; 
+      margin: 1rem 0; 
+      border: 1px solid #333;
+    }
+    .post-input { 
+      width: 100%; 
+      background: transparent; 
+      border: none; 
+      color: white; 
+      padding: 0.5rem 0; 
+      font-size: 1rem; 
+      resize: none;
+    }
+    .post-input:focus { outline: none; }
+    .image-upload {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 2px dashed #444;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+    .image-upload:hover { border-color: #ff006e; }
+    .image-upload input[type="file"] { display: none; }
+    .post-btn { 
+      background: linear-gradient(45deg, #ff006e, #8338ec); 
+      border: none; 
+      color: white; 
+      padding: 0.5rem 1rem; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-size: 0.9rem; 
+      margin-top: 0.5rem;
+    }
+    
+    /* Community Section */
+    .community-container { max-width: 600px; margin: 0 auto; padding: 1rem; }
+    .community-header {
+      background: linear-gradient(45deg, #ff006e, #8338ec);
+      padding: 2rem;
+      border-radius: 12px;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .competition-section {
+      background: #111;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border: 1px solid #333;
+    }
+    .competition-card {
+      background: linear-gradient(135deg, #ffd700, #d4af37);
+      color: #000;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .competition-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .competition-meta { font-size: 0.9rem; opacity: 0.8; }
+    
+    /* Map Styles */
+    .map-container {
+      max-width: 100%;
+      padding: 1rem;
+    }
+    .map-header {
+      background: #111;
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .map-view {
+      height: 400px;
+      border-radius: 12px;
+      border: 1px solid #333;
+    }
+    .leaflet-popup-content {
+      color: #000;
+      max-width: 200px;
+    }
+    
+    /* Bottom Navigation */
+    .bottom-nav { 
+      position: fixed; 
+      bottom: 0; 
+      width: 100%; 
+      height: 70px; 
+      background: rgba(0,0,0,0.95); 
+      backdrop-filter: blur(10px); 
+      display: flex; 
+      justify-content: space-around; 
+      align-items: center; 
+      border-top: 1px solid #333; 
+      z-index: 100;
+    }
+    .nav-item { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      cursor: pointer; 
+      transition: all 0.2s; 
+      padding: 0.5rem;
+    }
+    .nav-item.active { color: #ff006e; }
+    .nav-icon { font-size: 1.4rem; margin-bottom: 0.25rem; }
+    .nav-label { font-size: 0.7rem; font-weight: 500; }
+    
+    /* Other Tab Styles */
+    .tab-container { padding: 1rem; max-width: 500px; margin: 0 auto; }
+    .card { 
+      background: #111; 
+      border-radius: 12px; 
+      padding: 1.5rem; 
+      margin: 1rem 0; 
+      border: 1px solid #333;
+    }
+    .card h2 { margin-bottom: 1rem; }
+    .form-row { 
+      display: flex; 
+      gap: 0.5rem; 
+      margin-bottom: 1rem; 
+      flex-wrap: wrap;
+    }
+    input, select, textarea { 
+      background: #222; 
+      border: 1px solid #444; 
+      color: #fff; 
+      padding: 0.75rem; 
+      border-radius: 8px; 
+      flex: 1; 
+      min-width: 120px;
+    }
+    input:focus, select:focus, textarea:focus { 
+      outline: none; 
+      border-color: #ff006e; 
+      box-shadow: 0 0 0 2px rgba(255,0,110,0.2);
+    }
+    .btn { 
+      background: linear-gradient(45deg, #ff006e, #8338ec); 
+      border: none; 
+      color: white; 
+      padding: 0.75rem 1.5rem; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      transition: transform 0.1s;
+    }
+    .btn:hover { transform: scale(1.05); }
+    .btn.secondary { background: #333; }
+    .btn.small { padding: 0.5rem 1rem; font-size: 0.85rem; }
+    
+    .wardrobe-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+      gap: 1rem;
+    }
+    .wardrobe-item { 
+      background: #111; 
+      border: 1px solid #333; 
+      border-radius: 8px; 
+      padding: 1rem; 
+      text-align: center;
+    }
+    .item-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .item-image {
+      width: 100%;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+    .item-name { font-weight: 600; margin-bottom: 0.5rem; }
+    .item-details { font-size: 0.85rem; color: #888; margin-bottom: 0.5rem; }
+    
+    .ai-suggestion { 
+      background: linear-gradient(135deg, #ff006e, #8338ec); 
+      border-radius: 12px; 
+      padding: 2rem; 
+      text-align: center; 
+      margin: 1rem 0;
+    }
+    .suggestion-outfit { font-size: 1.2rem; margin: 1rem 0; }
+    .suggestion-tip { opacity: 0.9; font-size: 0.9rem; }
+    
+    /* Shop Categories */
+    .shop-categories {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .category-card {
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .category-card:hover {
+      border-color: #ff006e;
+      transform: translateY(-2px);
+    }
+    .category-card.active { border-color: #ff006e; background: rgba(255,0,110,0.1); }
+    .category-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .category-name { font-weight: 600; }
+    
+    /* African Heritage Categories */
+    .heritage-section {
+      background: linear-gradient(135deg, #d4af37, #ffd700);
+      color: #000;
+      padding: 2rem;
+      border-radius: 12px;
+      margin: 2rem 0;
+      text-align: center;
+    }
+    .heritage-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
+    .heritage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .heritage-item {
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.3s;
+    }
+    .heritage-item:hover { transform: scale(1.05); }
+    .heritage-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    
+    /* Shop Items with Images */
+    .shop-grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+      gap: 1rem;
+    }
+    .shop-item { 
+      background: #111; 
+      border: 1px solid #333; 
+      border-radius: 8px; 
+      padding: 1rem;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    .shop-item:hover {
+      transform: translateY(-2px);
+      border-color: #ff006e;
+    }
+    .shop-item-image {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+    .shop-icon { 
+      font-size: 2rem; 
+      margin-bottom: 0.5rem; 
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .shop-name { 
+      font-weight: 600; 
+      margin-bottom: 0.25rem; 
+      font-size: 0.9rem;
+    }
+    .shop-price { 
+      color: #4ade80; 
+      font-weight: 600; 
+      font-size: 0.85rem;
+    }
+    .shop-store { 
+      color: #888; 
+      font-size: 0.75rem; 
+      margin-bottom: 0.5rem;
+    }
+    
+    .notification { 
+      position: fixed; 
+      top: 80px; 
+      right: 20px; 
+      background: #10b981; 
+      color: white; 
+      padding: 0.75rem 1rem; 
+      border-radius: 8px; 
+      z-index: 1000; 
+      transform: translateX(400px); 
+      transition: transform 0.3s ease;
+    }
+    .notification.show { transform: translateX(0); }
+    .notification.error { background: #ef4444; }
+    
+    .empty-state { 
+      text-align: center; 
+      padding: 3rem 1rem; 
+      color: #666;
+    }
+    
+    @media (max-width: 768px) {
+      .form-row { flex-direction: column; }
+      .wardrobe-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+      .shop-categories { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+      .heritage-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+      .shop-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-spinner"></div>
+    <div class="loading-quote" id="loading-quote"></div>
+  </div>
+
+  <!-- Login Screen -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">✨👔</div>
+      <h1 class="login-title">WardrobeAI</h1>
+      <input type="text" id="username" class="login-input" placeholder="Enter your name" />
+      <select id="user-location" class="login-input">
+        <option value="Nairobi">📍 Nairobi</option>
+        <option value="Mombasa">📍 Mombasa</option>
+        <option value="Kisumu">📍 Kisumu</option>
+        <option value="Nakuru">📍 Nakuru</option>
+        <option value="Eldoret">📍 Eldoret</option>
+      </select>
+      <button class="login-btn" onclick="login()">Start Styling ✨</button>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app">
+    <header class="header">
+      <div class="logo">✨ WardrobeAI</div>
+      <div class="user-info">
+        <span id="current-user">👤 User</span>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Explore Tab -->
+      <div id="explore-tab" class="tab-content active">
+        <div class="feed-container">
+          <div class="create-post">
+            <textarea id="outfit-input" class="post-input" placeholder="Share your outfit today..."></textarea>
+            <input type="text" id="purchase-info" class="post-input" placeholder="Where did you buy these items? (optional)">
+            <label class="image-upload" for="image-upload-input">
+              <input type="file" id="image-upload-input" accept="image/*" onchange="handleImageUpload(event)">
+              📷 Add Photo
+            </label>
+            <canvas id="image-canvas" style="display:none;"></canvas>
+            <button class="post-btn" onclick="createPost()">Share Outfit</button>
+          </div>
+          <div id="posts-container"></div>
+        </div>
+      </div>
+
+      <!-- Community Tab -->
+      <div id="community-tab" class="tab-content">
+        <div class="community-container">
+          <div class="community-header">
+            <h1>Fashion Community Hub</h1>
+            <p>Show off your style in our Best Dressed competitions</p>
+          </div>
+          <div class="competition-section">
+            <h3>🏆 Best Dressed Competitions</h3>
+            <div class="competition-card">
+              <div class="competition-title">Weekly Best Dressed</div>
+              <div class="competition-meta">Ends in 5 days • 123 participants</div>
+              <button class="btn small" onclick="joinCompetition('weekly')">Join Competition</button>
+            </div>
+            <div class="competition-card">
+              <div class="competition-title">Monthly Best Dressed</div>
+              <div class="competition-meta">Ends in 25 days • 456 participants</div>
+              <button class="btn small" onclick="joinCompetition('monthly')">Join Competition</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shop Tab -->
+      <div id="shop-tab" class="tab-content">
+        <div class="tab-container">
+          <div class="card">
+            <h2>🛍️ Fashion Marketplace</h2>
+            <div class="form-row">
+              <input type="text" id="search-input" placeholder="Search for items...">
+              <button class="btn" onclick="searchShop()">Search</button>
+            </div>
+          </div>
+
+          <div class="heritage-section">
+            <div class="heritage-title">🌍 African Heritage Collection</div>
+            <p>Celebrate your roots with authentic African fashion</p>
+            <div class="heritage-grid">
+              <div class="heritage-item" onclick="filterShop('kente')">
+                <div class="heritage-icon">🟨🟫</div>
+                <div>Kente Accessories</div>
+              </div>
+              <div class="heritage-item" onclick="filterShop('dashiki')">
+                <div class="heritage-icon">👔</div>
+                <div>Modern Dashiki</div>
+              </div>
+              <div class="heritage-item" onclick="filterShop('ankara')">
+                <div class="heritage-icon">🧥</div>
+                <div>Ankara Blazers</div>
+              </div>
+              <div class="heritage-item" onclick="filterShop('jewelry')">
+                <div class="heritage-icon">📿</div>
+                <div>Beaded Jewelry</div>
+              </div>
+              <div class="heritage-item" onclick="filterShop('cologne')">
+                <div class="heritage-icon">🌬️</div>
+                <div>Colognes</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="shop-categories" id="shop-categories">
+            <div class="category-card active" onclick="filterShop('all')">
+              <div class="category-icon">🛍️</div>
+              <div class="category-name">All Items</div>
+            </div>
+            <div class="category-card" onclick="filterShop('top')">
+              <div class="category-icon">👕</div>
+              <div class="category-name">Tops</div>
+            </div>
+            <div class="category-card" onclick="filterShop('bottom')">
+              <div class="category-icon">👖</div>
+              <div class="category-name">Bottoms</div>
+            </div>
+            <div class="category-card" onclick="filterShop('dress')">
+              <div class="category-icon">👗</div>
+              <div class="category-name">Dresses</div>
+            </div>
+            <div class="category-card" onclick="filterShop('shoes')">
+              <div class="category-icon">👟</div>
+              <div class="category-name">Shoes</div>
+            </div>
+            <div class="category-card" onclick="filterShop('outerwear')">
+              <div class="category-icon">🧥</div>
+              <div class="category-name">Outerwear</div>
+            </div>
+            <div class="category-card" onclick="filterShop('cologne')">
+              <div class="category-icon">🌬️</div>
+              <div class="category-name">Colognes</div>
+            </div>
+          </div>
+
+          <div id="shop-results" class="shop-grid"></div>
+        </div>
+      </div>
+
+      <!-- AI Recommendations -->
+      <div id="ai-tab" class="tab-content">
+        <div class="tab-container">
+          <div class="card">
+            <h2>🤖 AI Style Assistant</h2>
+            <div class="form-row">
+              <select id="occasion">
+                <option value="casual">😎 Casual</option>
+                <option value="work">💼 Work</option>
+                <option value="date">❤️ Date Night</option>
+                <option value="event">🎉 Special Event</option>
+                <option value="cultural">🌍 Cultural Event</option>
+              </select>
+              <input type="number" id="temperature" placeholder="Temp (°C)" />
+              <button class="btn" onclick="getAIRecommendation()">✨ Get Suggestion</button>
+            </div>
+          </div>
+          <div id="ai-result">
+            <div class="ai-suggestion">
+              <h3>✨ AI is ready to help!</h3>
+              <div class="suggestion-outfit">Add some items to your wardrobe and get personalized outfit suggestions</div>
+              <div class="suggestion-tip">💡 The more items you have, the better the suggestions!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wardrobe Tab -->
+      <div id="wardrobe-tab" class="tab-content">
+        <div class="tab-container">
+          <div class="card">
+            <h2>👔 My Wardrobe</h2>
+            <div class="form-row">
+              <input id="item-name" placeholder="Item name" />
+              <select id="item-category">
+                <option value="top">👕 Top</option>
+                <option value="bottom">👖 Bottom</option>
+                <option value="dress">👗 Dress</option>
+                <option value="shoes">👟 Shoes</option>
+                <option value="outerwear">🧥 Jacket</option>
+                <option value="cologne">🌬️ Cologne</option>
+                <option value="accessory">💎 Accessory</option>
+              </select>
+              <select id="item-color">
+                <option value="white">White</option>
+                <option value="black">Black</option>
+                <option value="blue">Blue</option>
+                <option value="red">Red</option>
+                <option value="neutral">Neutral</option>
+              </select>
+              <label class="image-upload" for="wardrobe-image-upload">
+                <input type="file" id="wardrobe-image-upload" accept="image/*" onchange="handleWardrobeImageUpload(event)">
+                📷 Add Item Photo
+              </label>
+            </div>
+            <canvas id="wardrobe-image-canvas" style="display:none;"></canvas>
+            <button class="btn" onclick="addWardrobeItem()">Add Item</button>
+          </div>
+          <div id="wardrobe-list" class="wardrobe-grid"></div>
+        </div>
+      </div>
+
+      <!-- Map Tab -->
+      <div id="map-tab" class="tab-content">
+        <div class="map-container">
+          <div class="map-header">
+            <h2>🗺️ Style Map</h2>
+            <p>See where fashion enthusiasts are sharing their looks</p>
+          </div>
+          <div class="map-view" id="map-view"></div>
+          <div style="margin-top: 1rem; text-align: center;">
+            <button class="btn" onclick="refreshMap()">Refresh Locations</button>
+            <button class="btn secondary" onclick="toggleMapMode()">Satellite View</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <nav class="bottom-nav">
+      <div class="nav-item active" onclick="switchTab('explore')">
+        <div class="nav-icon">🔍</div>
+        <div class="nav-label">Explore</div>
+      </div>
+      <div class="nav-item" onclick="switchTab('community')">
+        <div class="nav-icon">👥</div>
+        <div class="nav-label">Community</div>
+      </div>
+      <div class="nav-item" onclick="switchTab('shop')">
+        <div class="nav-icon">🛍️</div>
+        <div class="nav-label">Shop</div>
+      </div>
+      <div class="nav-item" onclick="switchTab('ai')">
+        <div class="nav-icon">🤖</div>
+        <div class="nav-label">AI Style</div>
+      </div>
+      <div class="nav-item" onclick="switchTab('wardrobe')">
+        <div class="nav-icon">👔</div>
+        <div class="nav-label">Wardrobe</div>
+      </div>
+      <div class="nav-item" onclick="switchTab('map')">
+        <div class="nav-icon">🗺️</div>
+        <div class="nav-label">Map</div>
+      </div>
+    </nav>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const API = "http://127.0.0.1:5000";
+    let currentUser = null;
+    let currentTab = 'explore';
+    let selectedImage = null;
+    let wardrobeImage = null;
+    let currentShopFilter = 'all';
+    let map = null;
+
+    // Fashion Quotes for Loading Screen
+    const fashionQuotes = [
+      "Fashion is what you buy, style is what you do with it. ✨",
+      "Dress like you're already famous. 👗",
+      "Style is a way to say who you are without speaking. 👔",
+      "Fashion fades, but style is eternal. 🧥",
+      "Life's too short to wear boring clothes. 👟"
+    ];
+
+    // Show loading screen
+    function showLoadingScreen() {
+      const quoteElement = document.getElementById('loading-quote');
+      quoteElement.textContent = fashionQuotes[Math.floor(Math.random() * fashionQuotes.length)];
+      document.getElementById('loading-screen').classList.remove('hidden');
+    }
+
+    // Hide loading screen
+    function hideLoadingScreen() {
+      setTimeout(() => {
+        document.getElementById('loading-screen').classList.add('hidden');
+      }, 2000);
+    }
+
+    // Login/Logout Functions
+    function login() {
+      showLoadingScreen();
+      const username = document.getElementById('username').value.trim();
+      const location = document.getElementById('user-location').value;
+      
+      if (!username) {
+        showNotification('Please enter your name', 'error');
+        hideLoadingScreen();
+        return;
+      }
+      
+      currentUser = { name: username, location: location, lat: getLocationCoords(location).lat, lng: getLocationCoords(location).lng };
+      document.getElementById('current-user').textContent = `👤 ${username}`;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').classList.add('active');
+      
+      showNotification(`Welcome ${username}! 🎉`);
+      loadInitialData();
+      setTimeout(hideLoadingScreen, 2000);
+    }
+
+    function logout() {
+      showLoadingScreen();
+      currentUser = null;
+      document.getElementById('app').classList.remove('active');
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('username').value = '';
+      setTimeout(hideLoadingScreen, 2000);
+    }
+
+    // Location coordinates for Kenyan cities
+    function getLocationCoords(city) {
+      const coords = {
+        'Nairobi': { lat: -1.2921, lng: 36.8219 },
+        'Mombasa': { lat: -4.0435, lng: 39.6682 },
+        'Kisumu': { lat: -0.0917, lng: 34.7680 },
+        'Nakuru': { lat: -0.3031, lng: 36.0800 },
+        'Eldoret': { lat: 0.5143, lng: 35.2698 }
+      };
+      return coords[city] || coords['Nairobi'];
+    }
+
+    // Image handling for posts
+    function handleImageUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      if (!file.type.startsWith('image/')) {
+        showNotification('Please select an image file', 'error');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        showNotification('Image size must be less than 5MB', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.getElementById('image-canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Resize image to max 800px width
+          const maxWidth = 800;
+          const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+          canvas.width = img.width * ratio;
+          canvas.height = img.height * ratio;
+          
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          selectedImage = canvas.toDataURL('image/jpeg', 0.8);
+          
+          showNotification('Photo uploaded! 📸');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Image handling for wardrobe
+    function handleWardrobeImageUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      if (!file.type.startsWith('image/')) {
+        showNotification('Please select an image file', 'error');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        showNotification('Image size must be less than 5MB', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.getElementById('wardrobe-image-canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Resize image to max 200px width for wardrobe thumbnails
+          const maxWidth = 200;
+          const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+          canvas.width = img.width * ratio;
+          canvas.height = img.height * ratio;
+          
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          wardrobeImage = canvas.toDataURL('image/jpeg', 0.8);
+          
+          showNotification('Wardrobe item photo uploaded! 📸');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Notification System
+    function showNotification(message, type = 'success') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type === 'error' ? 'error' : ''}`;
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => notification.classList.add('show'), 100);
+      setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    }
+
+    // Tab switching
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+      
+      document.getElementById(`${tabName}-tab`).classList.add('active');
+      event.target.closest('.nav-item').classList.add('active');
+      currentTab = tabName;
+      
+      if (tabName === 'explore') loadPosts();
+      if (tabName === 'shop') searchShop();
+      if (tabName === 'wardrobe') loadWardrobe();
+      if (tabName === 'map') initMap();
+      if (tabName === 'community') loadCommunityContent();
+    }
+
+    // Community content
+    function loadCommunityContent() {
+      // No dynamic content needed as the competitions are static
+    }
+
+    function joinCompetition(period) {
+      showNotification(`Joined ${period} Best Dressed competition! 🏆`);
+    }
+
+    // API Functions
+    async function apiCall(endpoint, method = 'GET', data = null) {
+      try {
+        const options = {
+          method,
+          headers: { 'Content-Type': 'application/json' }
+        };
+        if (data) options.body = JSON.stringify(data);
+        
+        const response = await fetch(`${API}${endpoint}`, options);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const result = await response.json();
+        return result;
+      } catch (error) {
+        showNotification('Connection error', 'error');
+        throw error;
+      }
+    }
+
+    // Social Feed Functions
+    async function loadPosts() {
+      try {
+        const data = await apiCall('/api/posts');
+        const container = document.getElementById('posts-container');
+        
+        if (data.posts.length === 0) {
+          container.innerHTML = '<div class="empty-state"><h3>No posts yet</h3><p>Share your first outfit!</p></div>';
+          return;
+        }
+        
+        container.innerHTML = data.posts.map(post => `
+          <div class="post">
+            <div class="post-header">
+              <div class="avatar">${post.user.charAt(0)}</div>
+              <div>
+                <div class="post-user">${post.user}</div>
+                <div class="post-time">${timeAgo(post.created_at || Date.now())}</div>
+              </div>
+            </div>
+            <div class="post-image-container">
+              ${post.image ? 
+                `<img src="${post.image}" alt="Outfit" class="post-image">` : 
+                `<div class="post-image">${getOutfitEmojis(post.outfit)}</div>`
+              }
+            </div>
+            <div class="post-outfit">${post.outfit}</div>
+            ${post.purchaseInfo ? `
+              <div class="post-purchase">Bought from: <a href="#" onclick="filterShop('${post.purchaseInfo.toLowerCase()}')">${post.purchaseInfo}</a></div>
+            ` : ''}
+            <div class="post-actions">
+              <div class="action-buttons">
+                <button class="action-btn ${post.stars > 0 ? 'rated' : ''}" onclick="ratePost(${post.id}, this)">⭐</button>
+                <button class="action-btn">💬</button>
+                <button class="action-btn">📤</button>
+              </div>
+              <div class="post-stats">${post.stars || 0}⭐ • 3 comments</div>
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        document.getElementById('posts-container').innerHTML = '<div class="empty-state"><h3>Could not load posts</h3></div>';
+      }
+    }
+
+    async function createPost() {
+      const outfit = document.getElementById('outfit-input').value.trim();
+      const purchaseInfo = document.getElementById('purchase-info').value.trim();
+      
+      if (!outfit) {
+        showNotification('Please describe your outfit', 'error');
+        return;
+      }
+      
+      try {
+        const postData = { 
+          user: currentUser.name, 
+          outfit: outfit,
+          location: currentUser.location
+        };
+        
+        if (selectedImage) {
+          postData.image = selectedImage;
+        }
+        if (purchaseInfo) {
+          postData.purchaseInfo = purchaseInfo;
+        }
+        
+        await apiCall('/api/posts', 'POST', postData);
+        
+        document.getElementById('outfit-input').value = '';
+        document.getElementById('purchase-info').value = '';
+        selectedImage = null;
+        document.getElementById('image-upload-input').value = '';
+        showNotification('Outfit shared! 📸');
+        loadPosts();
+      } catch (error) {
+        showNotification('Failed to share outfit', 'error');
+      }
+    }
+
+    async function ratePost(postId, btn) {
+      try {
+        await apiCall(`/api/posts/${postId}/rate`, 'POST', { stars: 1 });
+        btn.style.color = '#fbbf24';
+        btn.classList.add('rated');
+        showNotification('Rated 1 star! ⭐');
+        setTimeout(() => loadPosts(), 1000);
+      } catch (error) {
+        showNotification('Rating failed', 'error');
+      }
+    }
+
+    // Wardrobe Functions
+    async function loadWardrobe() {
+      try {
+        const data = await apiCall('/api/wardrobe');
+        const container = document.getElementById('wardrobe-list');
+        
+        if (!data || !data.wardrobe || data.wardrobe.length === 0) {
+          container.innerHTML = '<div class="empty-state"><h3>Empty wardrobe</h3><p>Add your first item!</p></div>';
+          return;
+        }
+        
+        container.innerHTML = data.wardrobe.map(item => `
+          <div class="wardrobe-item">
+            ${item.image ? 
+              `<img src="${item.image}" alt="${item.name}" class="item-image" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">` : 
+              ''
+            }
+            ${!item.image ? `<div class="item-icon">${item.icon || '👔'}</div>` : ''}
+            <div class="item-name">${item.name}</div>
+            <div class="item-details">${item.category} • ${item.color}</div>
+            <button class="btn secondary small" onclick="deleteWardrobeItem(${item.id})">Remove</button>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error loading wardrobe:', error);
+        document.getElementById('wardrobe-list').innerHTML = '<div class="empty-state"><h3>Could not load wardrobe</h3><p>Check your connection and try again.</p></div>';
+      }
+    }
+
+    async function addWardrobeItem() {
+      const name = document.getElementById('item-name').value.trim();
+      const category = document.getElementById('item-category').value;
+      const color = document.getElementById('item-color').value;
+      
+      if (!name) {
+        showNotification('Please enter item name', 'error');
+        return;
+      }
+      
+      const icons = { 
+        top: '👕', 
+        bottom: '👖', 
+        dress: '👗', 
+        shoes: '👟', 
+        outerwear: '🧥', 
+        cologne: '🌬️',
+        accessory: '💎'
+      };
+      
+      try {
+        const itemData = {
+          name,
+          category,
+          color,
+          icon: icons[category],
+          price_band: 'medium'
+        };
+        
+        if (wardrobeImage) {
+          itemData.image = wardrobeImage;
+        }
+        
+        await apiCall('/api/wardrobe', 'POST', itemData);
+        
+        document.getElementById('item-name').value = '';
+        document.getElementById('item-category').value = 'top';
+        document.getElementById('item-color').value = 'white';
+        document.getElementById('wardrobe-image-upload').value = '';
+        wardrobeImage = null;
+        showNotification(`${icons[category]} ${name} added to wardrobe!`);
+        loadWardrobe();
+      } catch (error) {
+        console.error('Error adding wardrobe item:', error);
+        showNotification('Failed to add item', 'error');
+      }
+    }
+
+    async function deleteWardrobeItem(itemId) {
+      if (!confirm('Remove this item?')) return;
+      
+      try {
+        await apiCall(`/api/wardrobe/${itemId}`, 'DELETE');
+        showNotification('Item removed');
+        loadWardrobe();
+      } catch (error) {
+        console.error('Error deleting wardrobe item:', error);
+        showNotification('Failed to remove item', 'error');
+      }
+    }
+
+    // AI Recommendations
+    async function getAIRecommendation() {
+      try {
+        const occasion = document.getElementById('occasion').value;
+        const temp = document.getElementById('temperature').value;
+        
+        const params = new URLSearchParams({ occasion });
+        if (temp) params.set('temp_c', temp);
+        
+        const data = await apiCall(`/api/dresser?${params}`);
+        
+        // Enhanced recommendations for cultural occasions and cologne
+        let culturalTip = '';
+        let cologneSuggestion = '';
+        if (occasion === 'cultural') {
+          culturalTip = ' Consider adding traditional African elements like Kente accessories or Ankara prints to honor cultural heritage.';
+        }
+        if (data.wardrobe && data.wardrobe.some(item => item.category === 'cologne')) {
+          const colognes = data.wardrobe.filter(item => item.category === 'cologne');
+          const randomCologne = colognes[Math.floor(Math.random() * colognes.length)];
+          cologneSuggestion = `Complete your look with ${randomCologne ? randomCologne.name : 'a fresh cologne'}.`;
+        } else {
+          cologneSuggestion = 'Consider adding a cologne to your wardrobe for a complete look.';
+        }
+        
+        document.getElementById('ai-result').innerHTML = `
+          <div class="ai-suggestion">
+            <h3>✨ Perfect Outfit for ${occasion.charAt(0).toUpperCase() + occasion.slice(1)}</h3>
+            <div class="suggestion-outfit">${data.outfit} ${cologneSuggestion}</div>
+            <div class="suggestion-tip">💡 ${data.tip}${culturalTip}</div>
+            <button class="btn secondary" onclick="getAIRecommendation()" style="margin-top: 1rem;">New Suggestion</button>
+          </div>
+        `;
+      } catch (error) {
+        console.error('Error getting AI recommendation:', error);
+        document.getElementById('ai-result').innerHTML = `
+          <div class="ai-suggestion">
+            <h3>🤖 Need more items!</h3>
+            <div class="suggestion-outfit">Add more clothes and colognes to your wardrobe for better suggestions</div>
+            <div class="suggestion-tip">💡 Try adding tops, bottoms, shoes, and a signature cologne</div>
+          </div>
+        `;
+      }
+    }
+
+    // Shop Functions
+    function filterShop(category) {
+      currentShopFilter = category;
+      
+      // Update active category
+      document.querySelectorAll('.category-card').forEach(card => card.classList.remove('active'));
+      event.target.closest('.category-card')?.classList.add('active');
+      
+      searchShop();
+    }
+
+    async function searchShop() {
+      try {
+        const searchTerm = document.getElementById('search-input')?.value || '';
+        const params = new URLSearchParams({ region: currentUser?.location || 'Nairobi' });
+        if (currentShopFilter !== 'all') params.set('category', currentShopFilter);
+        
+        // Get regular shop data
+        const data = await apiCall(`/api/shops/search?${params}`);
+        let results = data.results || [];
+        
+        // Add African heritage items and colognes based on filter
+        if (currentShopFilter === 'kente' || currentShopFilter === 'all') {
+          results = results.concat(getHeritageItems('kente'));
+        }
+        if (currentShopFilter === 'dashiki' || currentShopFilter === 'all') {
+          results = results.concat(getHeritageItems('dashiki'));
+        }
+        if (currentShopFilter === 'ankara' || currentShopFilter === 'all') {
+          results = results.concat(getHeritageItems('ankara'));
+        }
+        if (currentShopFilter === 'jewelry' || currentShopFilter === 'all') {
+          results = results.concat(getHeritageItems('jewelry'));
+        }
+        if (currentShopFilter === 'cologne' || currentShopFilter === 'all') {
+          results = results.concat(getHeritageItems('cologne'));
+        }
+        
+        // Filter by search term
+        if (searchTerm) {
+          results = results.filter(item => 
+            item.name.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        }
+        
+        const container = document.getElementById('shop-results');
+        
+        if (!results || results.length === 0) {
+          container.innerHTML = '<div class="empty-state"><h3>No items found</h3><p>Try a different search or category.</p></div>';
+          return;
+        }
+        
+        container.innerHTML = results.map(item => `
+          <div class="shop-item">
+            ${item.image ? 
+              `<img src="${item.image}" alt="${item.name}" class="shop-item-image" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">` : 
+              ''
+            }
+            ${!item.image ? `<div class="shop-icon">${item.icon}</div>` : ''}
+            <div class="shop-name">${item.name}</div>
+            <div class="shop-price">KES ${getPriceFromBand(item.price_band)}</div>
+            <div class="shop-store">${item.merchant}</div>
+            <button class="btn small" onclick="buyItem('${item.name}', '${item.icon}', '${item.category}', '${item.price_band}', '${item.image || ''}')" style="width: 100%; margin-top: 0.5rem;">Add to Wardrobe</button>
+          </div>
+        `).join('');
+      } catch (error) {
+        console.error('Error searching shop:', error);
+        document.getElementById('shop-results').innerHTML = '<div class="empty-state"><h3>Could not load shop items</h3><p>Check your connection and try again.</p></div>';
+      }
+    }
+
+    function getHeritageItems(type) {
+      const heritageItems = {
+        "kente": [
+            {"name": "Traditional Kente Headband", "icon": "🎀", "category": "accessory", "price_band": "medium", "merchant": "African Heritage Store", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBj4ooh580p9xkFN3LtclZ1XEg-SvDaXxAFw&s"},
+            {"name": "Kente Print Bow Tie", "icon": "🎗️", "category": "accessory", "price_band": "low", "merchant": "Cultural Fashion Hub", "image": "https://sonson.com/cdn/shop/products/StreetArt_RemovedBackground_2.jpg?v=1682190419"},
+            {"name": "Kente Woven Belt", "icon": "🏷️", "category": "accessory", "price_band": "medium", "merchant": "Ghana Imports KE", "image": "https://ribbonbydesign.com/cdn/shop/files/kente_style_pattern-1_C__64804.1683049337.1280.1280.jpg?v=1691931775&width=1445"}
+        ],
+        "dashiki": [
+            {"name": "Modern Dashiki Shirt", "icon": "👔", "category": "top", "price_band": "medium", "merchant": "Afrocentric Styles", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxxKn4ViDHq-6eLrDraDwXcXIx2m_eS4DhdQ&s"},
+            {"name": "Dashiki Print Blouse", "icon": "👚", "category": "top", "price_band": "medium", "merchant": "Ubuntu Fashion", "image": "https://m.media-amazon.com/images/I/719O--kiRlL._UY1000_.jpg"},
+            {"name": "Contemporary Dashiki Dress", "icon": "👗", "category": "dress", "price_band": "high", "merchant": "African Elegance", "image": "https://lh6.googleusercontent.com/proxy/zWcCDaGahniOhm3lZp6DMjz1YjEnM9yIOCtd6FtpTjwFpFV7my_vOpFb-s8ByZGhBfOFe7vBMJBpXgsK_45oaLCn9AJDnYYW65y1_CcC1YyJ"}
+        ],
+        "ankara": [
+            {"name": "Ankara Print Blazer", "icon": "🧥", "category": "outerwear", "price_band": "high", "merchant": "Ankara Couture", "image": "https://kipfashion.com/wp-content/uploads/2020/06/Ankara-print-Denzel-Blazer.png"},
+            {"name": "Ankara Business Jacket", "icon": "🧥", "category": "outerwear", "price_band": "high", "merchant": "Professional African Wear", "image": "https://ophclothing.com/storage/2021/08/8729.jpg"},
+            {"name": "Ankara Casual Blazer", "icon": "🧥", "category": "outerwear", "price_band": "medium", "merchant": "Modern African Fashion", "image": "https://i0.wp.com/kipfashion.com/wp-content/uploads/2020/06/Ankara-print-Men-blazer.png?fit=580%2C577&ssl=1"}
+        ],
+        "jewelry": [
+            {"name": "Maasai Beaded Necklace", "icon": "📿", "category": "accessory", "price_band": "medium", "merchant": "Maasai Crafts Collective", "image": "https://i.pinimg.com/736x/43/0f/2e/430f2e3534c2538bf36a5127d9bd87db.jpg"},
+            {"name": "Traditional Beaded Bracelet", "icon": "💎", "category": "accessory", "price_band": "low", "merchant": "Handmade Kenya", "image": "https://www.themaasaimarket.com/4794-large_default/milele-maasai-bracelet-blues.jpg"},
+            {"name": "Ethnic Beaded Earrings", "icon": "💍", "category": "accessory", "price_band": "low", "merchant": "Cultural Jewelry Store", "image": "https://m.media-amazon.com/images/I/81rj0UIm6fL._UF1000,1000_QL80_.jpg"}
+        ],
+        "cologne": [
+            {"name": "Safari Essence Cologne", "icon": "🌬️", "category": "cologne", "price_band": "medium", "merchant": "African Scents", "image": "https://perfume-essence.com/media/catalog/product/cache/9110975d72d9707b7bc93e05e75366a6/s/a/safari_for_men.jpg"},
+            {"name": "Nile Breeze Fragrance", "icon": "🌬️", "category": "cologne", "price_band": "high", "merchant": "Luxury Scents KE", "image": "https://hijaz.com/cdn/shop/products/blue-nile-alcohol-free-cologne-scented-body-oil-perfume-577944_1200x.jpg?v=1665592864"},
+            {"name": "Savanna Mist Cologne", "icon": "🌬️", "category": "cologne", "price_band": "medium", "merchant": "Modern Fragrances", "image": "https://shop.rainafrica.co.za/cdn/shop/files/Savannah_Mist.jpg?v=1746030680"}
+        ]
+      };
+      
+      return heritageItems[type] || [];
+    }
+
+    async function buyItem(name, icon, category, price_band, image = '') {
+      try {
+        await apiCall('/api/wardrobe', 'POST', {
+          name,
+          icon,
+          category,
+          price_band,
+          color: 'neutral',
+          image: image
+        });
+        
+        showNotification(`${icon} ${name} added to wardrobe!`);
+        loadWardrobe();
+      } catch (error) {
+        console.error('Error buying item:', error);
+        showNotification('Purchase failed', 'error');
+      }
+    }
+
+    // Map Functions
+    function initMap() {
+      // Initialize Leaflet map
+      if (map) {
+        map.remove();
+      }
+      
+      map = L.map('map-view').setView([-1.2921, 36.8219], 6); // Centered on Kenya
+      
+      // Add tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+      
+      // Add user markers
+      addUserMarkers();
+    }
+
+    function addUserMarkers() {
+      // Sample users with different locations
+      const users = [
+        { name: "Alex", initial: "A", location: "Nairobi", lat: -1.2921, lng: 36.8219, outfit: "Casual Friday look with denim" },
+        { name: "Sarah", initial: "S", location: "Mombasa", lat: -4.0435, lng: 39.6682, outfit: "Beach vibes with flowy dress" },
+        { name: "Mike", initial: "M", location: "Kisumu", lat: -0.0917, lng: 34.7680, outfit: "Smart casual for work meeting" },
+        { name: "Grace", initial: "G", location: "Nakuru", lat: -0.3031, lng: 36.0800, outfit: "Traditional dashiki for cultural event" },
+        { name: "John", initial: "J", location: "Eldoret", lat: 0.5143, lng: 35.2698, outfit: "Athletic wear for morning run" }
+      ];
+      
+      // Add current user
+      if (currentUser) {
+        users.push({
+          name: currentUser.name,
+          initial: currentUser.name.charAt(0),
+          location: currentUser.location,
+          lat: currentUser.lat,
+          lng: currentUser.lng,
+          outfit: "Your latest outfit post"
+        });
+      }
+      
+      users.forEach(user => {
+        const marker = L.marker([user.lat, user.lng]).addTo(map);
+        marker.bindPopup(`
+          <b>${user.name}</b><br>
+          📍 ${user.location}<br>
+          👔 ${user.outfit}
+        `);
+      });
+    }
+
+    function refreshMap() {
+      initMap();
+      showNotification('Map refreshed! 🗺️');
+    }
+
+    function toggleMapMode() {
+      if (map) {
+        const currentLayer = map.hasLayer(L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'));
+        map.eachLayer(layer => {
+          if (layer instanceof L.TileLayer) {
+            map.removeLayer(layer);
+          }
+        });
+        
+        if (currentLayer) {
+          L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; Esri & contributors'
+          }).addTo(map);
+          showNotification('Switched to satellite view');
+        } else {
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          }).addTo(map);
+          showNotification('Switched to standard view');
+        }
+      }
+    }
+
+    // Utility Functions
+    function timeAgo(timestamp) {
+      const now = new Date();
+      const time = new Date(timestamp);
+      const diff = Math.floor((now - time) / 1000);
+      
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
+    }
+
+    function getOutfitEmojis(outfit) {
+      const emojis = outfit.match(/[👔👕👖👗🧥👟👠🩴👞🧦🌬️]/g);
+      return emojis ? emojis.slice(0, 3).join('') : '👔✨';
+    }
+
+    function getPriceFromBand(band) {
+      const prices = { low: '1,500', medium: '4,000', high: '12,000' };
+      return prices[band] || '3,000';
+    }
+
+    // Initialize
+    async function loadInitialData() {
+      showLoadingScreen();
+      await loadPosts();
+      setTimeout(hideLoadingScreen, 2000);
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        if (e.target.id === 'item-name') addWardrobeItem();
+        if (e.target.id === 'search-input') searchShop();
+      }
+    });
+
+    // Auto-resize textarea
+    document.addEventListener('input', function(e) {
+      if (e.target.tagName === 'TEXTAREA') {
+        e.target.style.height = 'auto';
+        e.target.style.height = e.target.scrollHeight + 'px';
+      }
+    });
+
+    // Initialize app when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      showLoadingScreen();
+      // Set initial shop filter
+      currentShopFilter = 'all';
+      setTimeout(hideLoadingScreen, 2000);
+    });
+  </script>
+</body>
+</html>
