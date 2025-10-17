@@ -1,0 +1,2261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GenLife - Smart Wardrobe</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>G</text></svg>">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-spinner"></div>
+    <div class="loading-quote" id="loading-quote"></div>
+  </div>
+
+  <!-- Login Screen -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">✨👔</div>
+      <h1 class="login-title">GenLife</h1>
+      <input type="text" id="username" class="login-input" placeholder="Enter your username" />
+      <input type="password" id="password" class="login-input" placeholder="Enter your password" />
+      <select id="user-location" class="login-input">
+        <option value="Nairobi">📍 Nairobi</option>
+        <option value="Mombasa">📍 Mombasa</option>
+        <option value="Kisumu">📍 Kisumu</option>
+        <option value="Nakuru">📍 Nakuru</option>
+        <option value="Eldoret">📍 Eldoret</option>
+      </select>
+      <div class="merchant-login">
+        <p><strong>Merchant Login</strong></p>
+        <button class="login-btn secondary" onclick="loginAsMerchant()">Login as Merchant</button>
+      </div>
+      <button class="login-btn" onclick="login()">Start Styling ✨</button>
+      <div class="register-link">
+        <p>New user? <a href="#" onclick="showRegister()">Register here</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Screen -->
+  <div id="register-screen" class="login-screen" style="display: none;">
+    <div class="login-card">
+      <div class="login-logo">✨👔</div>
+      <h1 class="login-title">Register</h1>
+      <input type="text" id="register-username" class="login-input" placeholder="Choose username" />
+      <input type="password" id="register-password" class="login-input" placeholder="Choose password" />
+      <select id="register-location" class="login-input">
+        <option value="Nairobi">📍 Nairobi</option>
+        <option value="Mombasa">📍 Mombasa</option>
+        <option value="Kisumu">📍 Kisumu</option>
+        <option value="Nakuru">📍 Nakuru</option>
+        <option value="Eldoret">📍 Eldoret</option>
+      </select>
+      <button class="login-btn" onclick="register()">Register</button>
+      <div class="register-link">
+        <p>Already have an account? <a href="#" onclick="showLogin()">Login here</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app">
+    <!-- Notifications Bar -->
+    <div id="notifications-bar" class="notifications-bar">
+      <div class="notifications-header">
+        <span>🔔 Notifications</span>
+        <button class="close-notifications" onclick="toggleNotifications()">×</button>
+      </div>
+      <div id="notifications-list" class="notifications-list"></div>
+    </div>
+
+    <header class="header">
+      <div class="logo">✨ GenLife</div>
+      <div class="user-info">
+        <span id="current-user">👤 User</span>
+        <button class="notification-btn" onclick="toggleNotifications()">🔔</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Explore Tab -->
+      <div id="explore-tab" class="tab-content active">
+        <div class="weather-banner" id="weather-banner">
+          Loading weather...
+        </div>
+        <div class="feed-container">
+          <div class="create-post">
+            <textarea id="outfit-input" class="post-input" placeholder="Share your outfit today..."></textarea>
+            <input type="text" id="purchase-info" class="post-input" placeholder="Where did you buy these items? (optional)">
+            <label class="image-upload" for="image-upload-input">
+              <input type="file" id="image-upload-input" accept="image/*" onchange="handleImageUpload(event)">
+              📷 Add Photo
+            </label>
+            <div id="image-preview" class="image-preview" style="display: none;">
+              <img id="preview-image" src="" alt="Preview">
+              <button type="button" class="btn secondary small" onclick="removeImagePreview()">Remove</button>
+            </div>
+            <canvas id="image-canvas" style="display:none;"></canvas>
+            <button class="post-btn" onclick="createPost()">Share Outfit</button>
+          </div>
+          <div id="posts-container"></div>
+        </div>
+      </div>
+
+      <!-- Community Tab -->
+      <div id="community-tab" class="tab-content">
+        <div class="community-container">
+          <div class="community-header">
+            <h1>Fashion Community Hub</h1>
+            <p>Celebrating African fashion excellence</p>
+          </div>
+          
+          <div class="activity-feed">
+            <h3>📢 Recent Activity</h3>
+            <div id="activity-feed" class="activity-list"></div>
+          </div>
+          
+          <div class="leaderboard-section">
+            <h3>🏆 Style Champions</h3>
+            <div class="leaderboard-grid">
+              <div class="leaderboard-card">
+                <div class="leaderboard-title">Top Fashionistas</div>
+                <div id="winners-leaderboard"></div>
+                <button class="view-full-btn" onclick="showFullLeaderboard()">View Full Leaderboard</button>
+              </div>
+              <div class="leaderboard-card">
+                <div class="leaderboard-title">🔥 Trending Styles</div>
+                <div id="trending-styles"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shop Tab -->
+      <div id="shop-tab" class="tab-content">
+        <div class="tab-container">
+          <div class="card">
+            <h2>🛍️ Fashion Marketplace</h2>
+            <div id="merchant-controls" style="display: none;">
+              <div class="form-row">
+                <input type="text" id="new-item-name" placeholder="Item name">
+                <select id="new-item-category">
+                  <option value="top">👕 Top</option>
+                  <option value="bottom">👖 Bottom</option>
+                  <option value="dress">👗 Dress</option>
+                  <option value="shoes">👟 Shoes</option>
+                  <option value="outerwear">🧥 Outerwear</option>
+                  <option value="accessory">💎 Accessory</option>
+                  <option value="cologne">🌬️ Cologne</option>
+                </select>
+                <select id="new-item-price">
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+                <button class="btn" onclick="addShopItem()">Add Item</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <input type="text" id="search-input" placeholder="Search for items...">
+              <button class="btn" onclick="searchShop()">Search</button>
+            </div>
+          </div>
+
+          <div class="heritage-section">
+            <div class="heritage-title">🌍 African Heritage Collection</div>
+            <p>Celebrate your roots with authentic African fashion</p>
+            <div class="heritage-grid">
+              <div class="heritage-item" onclick="filterShop('kente')">
+                <div class="heritage-icon">🟨🟫</div>
+                <div>Kente Accessories</div>
+              </div>
+              <div class="heritage-item" onclick="filterShop('dashiki')">
+                <div class="heritage-icon">👔</div>
+                <div>Modern Dashiki</div>
+              </div>
+              <div class="heritage-item" onclick="filterShop('ankara')">
+                <div class="heritage-icon">🧥</div>
+                <div>Ankara Blazers</div>
+              </div>
+              <div class="heritage-item" onclick="filterShop('djellaba')">
+                <div class="heritage-icon">🥻</div>
+                <div>Djellaba & Caftan</div>
+              </div>
+              <div class="heritage-item" onclick="filterShop('jewelry')">
+                <div class="heritage-icon">📿</div>
+                <div>Beaded Jewelry</div>
+              </div>
+              <div class="heritage-item" onclick="filterShop('cologne')">
+                <div class="heritage-icon">🌬️</div>
+                <div>Colognes</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="shop-categories" id="shop-categories">
+            <div class="category-card active" onclick="filterShop('all')">
+              <div class="category-icon">🛍️</div>
+              <div class="category-name">All Items</div>
+            </div>
+            <div class="category-card" onclick="filterShop('top')">
+              <div class="category-icon">👕</div>
+              <div class="category-name">Tops</div>
+            </div>
+            <div class="category-card" onclick="filterShop('bottom')">
+              <div class="category-icon">👖</div>
+              <div class="category-name">Bottoms</div>
+            </div>
+            <div class="category-card" onclick="filterShop('dress')">
+              <div class="category-icon">👗</div>
+              <div class="category-name">Dresses</div>
+            </div>
+            <div class="category-card" onclick="filterShop('shoes')">
+              <div class="category-icon">👟</div>
+              <div class="category-name">Shoes</div>
+            </div>
+            <div class="category-card" onclick="filterShop('outerwear')">
+              <div class="category-icon">🧥</div>
+              <div class="category-name">Outerwear</div>
+            </div>
+            <div class="category-card" onclick="filterShop('cologne')">
+              <div class="category-icon">🌬️</div>
+              <div class="category-name">Colognes</div>
+            </div>
+          </div>
+
+          <div id="shop-results" class="shop-grid"></div>
+        </div>
+      </div>
+
+      <!-- AI Dresser Tab -->
+      <div id="ai-dresser-tab" class="tab-content">
+        <div class="tab-container">
+          <div class="card">
+            <h2>🤖 AI Dresser</h2>
+            <div class="form-row">
+              <select id="occasion">
+                <option value="casual">😎 Casual</option>
+                <option value="work">💼 Work</option>
+                <option value="date">❤️ Date Night</option>
+                <option value="event">🎉 Special Event</option>
+                <option value="cultural">🌍 Cultural Event</option>
+              </select>
+              <button class="btn" onclick="getAIRecommendation()">✨ Get Suggestion</button>
+            </div>
+          </div>
+          <div id="ai-result">
+            <div class="ai-suggestion">
+              <h3>✨ AI is ready to help!</h3>
+              <div class="suggestion-outfit">Add some items to your wardrobe and get personalized outfit suggestions</div>
+              <div class="suggestion-tip">💡 The more items you have, the better the suggestions!</div>
+            </div>
+          </div>
+
+          <!-- Shop Suggestions -->
+          <div class="card">
+            <h2>🛍️ Shop Suggestions</h2>
+            <div class="form-row">
+              <select id="shop-occasion">
+                <option value="casual">😎 Casual</option>
+                <option value="work">💼 Work</option>
+                <option value="date">❤️ Date Night</option>
+                <option value="event">🎉 Special Event</option>
+                <option value="cultural">🌍 Cultural Event</option>
+              </select>
+              <select id="shop-weather">
+                <option value="hot">🔥 Hot</option>
+                <option value="warm">☀️ Warm</option>
+                <option value="mild">🌤️ Mild</option>
+                <option value="cool">❄️ Cool</option>
+              </select>
+              <button class="btn" onclick="getShopSuggestions()">Find Items</button>
+            </div>
+            <div id="shop-suggestions" class="shop-grid" style="margin-top: 1rem;"></div>
+          </div>
+
+          <!-- Wardrobe Scheduler -->
+          <div class="card calendar-section">
+            <h2>📅 My Schedule</h2>
+            <div class="calendar-header">
+              <button class="btn secondary" onclick="previousMonth()">←</button>
+              <h3 id="current-month">January 2024</h3>
+              <button class="btn secondary" onclick="nextMonth()">→</button>
+            </div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+            <div class="scheduled-outfits" id="scheduled-outfits">
+              <h4>Today's Outfits</h4>
+              <div id="todays-outfits"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Tab -->
+      <div id="profile-tab" class="tab-content">
+        <div class="tab-container">
+          <!-- Dashboard -->
+          <div class="dashboard-grid">
+            <div class="dashboard-card">
+              <div class="dashboard-number" id="total-items">0</div>
+              <div class="dashboard-label">Wardrobe Items</div>
+            </div>
+            <div class="dashboard-card">
+              <div class="dashboard-number" id="total-outfits">0</div>
+              <div class="dashboard-label">Created Outfits</div>
+            </div>
+          </div>
+
+          <!-- Quick Post Outfit -->
+          <div class="card">
+            <h2>📸 Post Your Outfit</h2>
+            <div class="form-row">
+              <textarea id="quick-outfit-input" placeholder="Describe your outfit..."></textarea>
+            </div>
+            <div class="form-row">
+              <input type="text" id="quick-purchase-info" placeholder="Where did you buy these items? (optional)">
+            </div>
+            <button class="btn" onclick="quickPostOutfit()">Post to Explore</button>
+          </div>
+
+          <!-- Add Item Section -->
+          <div class="card">
+            <h2>👔 Add Wardrobe Item</h2>
+            <div class="form-row">
+              <input id="item-name" placeholder="Item name" />
+              <select id="item-category">
+                <option value="top">👕 Top</option>
+                <option value="bottom">👖 Bottom</option>
+                <option value="dress">👗 Dress</option>
+                <option value="shoes">👟 Shoes</option>
+                <option value="outerwear">🧥 Outerwear</option>
+                <option value="cologne">🌬️ Cologne</option>
+                <option value="accessory">💎 Accessory</option>
+              </select>
+              <select id="item-color">
+                <option value="white">White</option>
+                <option value="black">Black</option>
+                <option value="blue">Blue</option>
+                <option value="red">Red</option>
+                <option value="green">Green</option>
+                <option value="yellow">Yellow</option>
+                <option value="neutral">Neutral</option>
+              </select>
+              <label class="image-upload" for="wardrobe-image-upload">
+                <input type="file" id="wardrobe-image-upload" accept="image/*" onchange="handleWardrobeImageUpload(event)">
+                📷 Add Item Photo
+              </label>
+            </div>
+            <canvas id="wardrobe-image-canvas" style="display:none;"></canvas>
+            <button class="btn" onclick="addWardrobeItem()">Add Item</button>
+          </div>
+
+          <!-- Create Outfit Section -->
+          <div class="card outfits-section">
+            <h2>🎨 Create Outfit Combination</h2>
+            <div class="form-row">
+              <select id="outfit-top">
+                <option value="">Select Top</option>
+              </select>
+              <select id="outfit-bottom">
+                <option value="">Select Bottom</option>
+              </select>
+              <select id="outfit-shoes">
+                <option value="">Select Shoes</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <select id="outfit-outerwear">
+                <option value="">Select Outerwear (Optional)</option>
+              </select>
+              <select id="outfit-accessory">
+                <option value="">Select Accessory (Optional)</option>
+              </select>
+              <select id="outfit-cologne">
+                <option value="">Select Cologne (Optional)</option>
+              </select>
+            </div>
+            <input type="text" id="outfit-name" placeholder="Name this outfit (e.g., Casual Friday)" class="form-row">
+            <button class="btn" onclick="createOutfit()">Create Outfit</button>
+          </div>
+
+          <!-- My Outfits Section -->
+          <div class="card">
+            <h2>👗 My Outfits</h2>
+            <div id="outfits-list"></div>
+          </div>
+
+          <!-- Wardrobe Items -->
+          <div class="card">
+            <h2>👜 My Wardrobe Items</h2>
+            <div id="wardrobe-list" class="wardrobe-grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Tab -->
+      <div id="map-tab" class="tab-content">
+        <div class="map-container">
+          <div class="map-header">
+            <h2>🗺️ Style Map</h2>
+            <p>See where fashion enthusiasts are sharing their looks</p>
+            <div class="map-controls">
+              <button class="btn" onclick="addNewLocation()">📍 Add New Location</button>
+              <button class="btn secondary" onclick="showEmergencyLocationModal()">🚨 Add Emergency Location</button>
+            </div>
+          </div>
+          <div class="map-view" id="map-view"></div>
+        </div>
+      </div>
+    </main>
+
+    <nav class="bottom-nav">
+      <div class="nav-item active" onclick="switchTab('explore')" id="nav-explore">
+        <div class="nav-icon">🔍</div>
+        <div class="nav-label">Explore</div>
+      </div>
+      <div class="nav-item" onclick="switchTab('community')" id="nav-community">
+        <div class="nav-icon">👥</div>
+        <div class="nav-label">Community</div>
+      </div>
+      <div class="nav-item" onclick="switchTab('shop')" id="nav-shop">
+        <div class="nav-icon">🛍️</div>
+        <div class="nav-label">Shop</div>
+      </div>
+      <div class="nav-item" onclick="switchTab('ai-dresser')" id="nav-ai-dresser">
+        <div class="nav-icon">🤖</div>
+        <div class="nav-label">AI Dresser</div>
+      </div>
+      <div class="nav-item" onclick="switchTab('profile')" id="nav-profile">
+        <div class="nav-icon" id="profile-icon">👤</div>
+        <div class="nav-label">Profile</div>
+      </div>
+      <div class="nav-item" onclick="switchTab('map')" id="nav-map">
+        <div class="nav-icon">🗺️</div>
+        <div class="nav-label">Map</div>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Emergency Location Modal -->
+  <div id="emergency-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🚨 Add Emergency Location</h3>
+        <button class="close-modal" onclick="closeEmergencyModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="emergency-name" placeholder="Location name (e.g., Home, Work)" class="modal-input">
+        <p>Click on the map to set the location coordinates</p>
+        <input type="text" id="emergency-lat" placeholder="Latitude" class="modal-input" readonly>
+        <input type="text" id="emergency-lng" placeholder="Longitude" class="modal-input" readonly>
+        <input type="text" id="emergency-trusted" placeholder="Trusted usernames (comma separated)" class="modal-input">
+        <button class="btn" onclick="saveEmergencyLocation()">Save Emergency Location</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Star Rating Modal -->
+  <div id="rating-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>⭐ Rate this Outfit</h3>
+        <button class="close-modal" onclick="closeRatingModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="star-rating-modal">
+          <div class="stars" id="modal-stars">
+            <span class="star" onclick="setRating(1)">⭐</span>
+            <span class="star" onclick="setRating(2)">⭐</span>
+            <span class="star" onclick="setRating(3)">⭐</span>
+            <span class="star" onclick="setRating(4)">⭐</span>
+            <span class="star" onclick="setRating(5)">⭐</span>
+          </div>
+          <div class="rating-text" id="rating-text">Select your rating</div>
+        </div>
+        <button class="btn" onclick="submitRating()">Submit Rating</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Complete JavaScript implementation in next part...
+    const API = "https://genlife-5.onrender.com";
+let currentUser = null;
+let currentTab = 'explore';
+let selectedImage = null;
+let wardrobeImage = null;
+let currentShopFilter = 'all';
+let map = null;
+let isMerchant = false;
+let userOutfits = [];
+let customLocations = [];
+let currentMonth = new Date().getMonth();
+let currentYear = new Date().getFullYear();
+let scheduledOutfits = {};
+let currentRatingPostId = null;
+let selectedRating = 0;
+let emergencyLocationCoords = null;
+
+// Fashion Quotes for Loading Screen
+const fashionQuotes = [
+    "Fashion is what you buy, style is what you do with it. ✨",
+    "Dress like you're already famous. 👗",
+    "Style is a way to say who you are without speaking. 👔",
+    "Fashion fades, but style is eternal. 🧥",
+    "Life's too short to wear boring clothes. 👟",
+    "African fashion tells stories of heritage and pride. 🌍",
+    "Kente cloth carries the wisdom of generations. 🟨🟫",
+    "Ankara prints celebrate the vibrancy of African culture. 🎨",
+    "Traditional beads speak the language of our ancestors. 📿",
+    "Modern African fashion honors the past while embracing the future. ✨",
+    "Every dashiki tells a story of resilience and beauty. 👔",
+    "African elegance is timeless and powerful. 👑",
+    "Our prints carry the colors of the savanna and the rhythm of the drum. 🌅",
+    "Cultural fashion is not a trend, it's a legacy. 🌟",
+    "Wear your heritage with pride and confidence. 💪"
+];
+
+// Show loading screen
+function showLoadingScreen() {
+    const quoteElement = document.getElementById('loading-quote');
+    quoteElement.textContent = fashionQuotes[Math.floor(Math.random() * fashionQuotes.length)];
+    document.getElementById('loading-screen').classList.remove('hidden');
+}
+
+// Hide loading screen
+function hideLoadingScreen() {
+    setTimeout(() => {
+        document.getElementById('loading-screen').classList.add('hidden');
+    }, 2000);
+}
+
+// Authentication Functions
+function showRegister() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('register-screen').style.display = 'flex';
+}
+
+function showLogin() {
+    document.getElementById('register-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+}
+
+async function register() {
+    const username = document.getElementById('register-username').value.trim();
+    const password = document.getElementById('register-password').value;
+    const location = document.getElementById('register-location').value;
+    
+    if (!username || !password) {
+        showNotification('Please enter username and password', 'error');
+        return;
+    }
+    
+    if (username.length < 3) {
+        showNotification('Username must be at least 3 characters', 'error');
+        return;
+    }
+    
+    if (password.length < 4) {
+        showNotification('Password must be at least 4 characters', 'error');
+        return;
+    }
+    
+    showLoadingScreen();
+    
+    try {
+        const response = await apiCall('/api/register', 'POST', {
+            username: username,
+            password: password,
+            location: location,
+            is_merchant: false
+        });
+        
+        showNotification('Registration successful! Please login.');
+        showLogin();
+        hideLoadingScreen();
+    } catch (error) {
+        showNotification('Registration failed', 'error');
+        hideLoadingScreen();
+    }
+}
+
+async function login() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const location = document.getElementById('user-location').value;
+    
+    if (!username || !password) {
+        showNotification('Please enter username and password', 'error');
+        return;
+    }
+    
+    showLoadingScreen();
+    
+    try {
+        const response = await apiCall('/api/login', 'POST', {
+            username: username,
+            password: password,
+            location: location,
+            is_merchant: false
+        });
+        
+        currentUser = { 
+            name: username, 
+            location: location, 
+            lat: getLocationCoords(location).lat, 
+            lng: getLocationCoords(location).lng,
+            initial: username.charAt(0).toUpperCase(),
+            is_merchant: false
+        };
+        
+        initializeUser();
+        hideLoadingScreen();
+    } catch (error) {
+        showNotification('Login failed', 'error');
+        hideLoadingScreen();
+    }
+}
+
+async function loginAsMerchant() {
+    const username = document.getElementById('username').value.trim() || 'Merchant';
+    const password = document.getElementById('password').value || 'merchant123';
+    const location = document.getElementById('user-location').value;
+    
+    showLoadingScreen();
+    
+    try {
+        const response = await apiCall('/api/login', 'POST', {
+            username: username,
+            password: password,
+            location: location,
+            is_merchant: true
+        });
+        
+        currentUser = { 
+            name: username, 
+            location: location, 
+            lat: getLocationCoords(location).lat, 
+            lng: getLocationCoords(location).lng,
+            initial: username.charAt(0).toUpperCase(),
+            is_merchant: true
+        };
+        
+        initializeUser();
+        hideLoadingScreen();
+    } catch (error) {
+        // Fallback for demo
+        currentUser = { 
+            name: username, 
+            location: location, 
+            lat: getLocationCoords(location).lat, 
+            lng: getLocationCoords(location).lng,
+            initial: username.charAt(0).toUpperCase(),
+            is_merchant: true
+        };
+        initializeUser();
+        hideLoadingScreen();
+    }
+}
+
+function initializeUser() {
+    isMerchant = currentUser.is_merchant;
+    document.getElementById('current-user').textContent = `👤 ${currentUser.name}${isMerchant ? ' (Merchant)' : ''}`;
+    document.getElementById('profile-icon').textContent = currentUser.initial;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('register-screen').style.display = 'none';
+    document.getElementById('app').classList.add('active');
+    
+    if (isMerchant) {
+        document.getElementById('merchant-controls').style.display = 'block';
+        // Hide explore and community tabs for merchants
+        document.getElementById('nav-explore').classList.add('hidden');
+        document.getElementById('nav-community').classList.add('hidden');
+        // Switch to shop tab by default for merchants
+        switchTab('shop');
+    } else {
+        document.getElementById('merchant-controls').style.display = 'none';
+        document.getElementById('nav-explore').classList.remove('hidden');
+        document.getElementById('nav-community').classList.remove('hidden');
+    }
+    
+    // Clear previous user's data
+    clearUserData();
+    
+    showNotification(`Welcome ${currentUser.name}! 🎉`);
+    loadInitialData();
+    loadNotifications();
+}
+
+function clearUserData() {
+    // Clear user-specific data from localStorage
+    localStorage.removeItem(`outfits_${currentUser.name}`);
+    localStorage.removeItem(`locations_${currentUser.name}`);
+    localStorage.removeItem(`scheduled_${currentUser.name}`);
+    userOutfits = [];
+    customLocations = [];
+    scheduledOutfits = {};
+}
+
+function logout() {
+    showLoadingScreen();
+    currentUser = null;
+    isMerchant = false;
+    document.getElementById('app').classList.remove('active');
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('merchant-controls').style.display = 'none';
+    document.getElementById('profile-icon').textContent = '👤';
+    // Show all tabs again
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('hidden'));
+    setTimeout(hideLoadingScreen, 2000);
+}
+
+// Notifications System
+async function loadNotifications() {
+    if (!currentUser) return;
+    
+    try {
+        const data = await apiCall(`/api/notifications?username=${currentUser.name}`);
+        displayNotifications(data.notifications || []);
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+    }
+}
+
+function displayNotifications(notifications) {
+    const container = document.getElementById('notifications-list');
+    
+    if (notifications.length === 0) {
+        container.innerHTML = '<div class="notification-item">No notifications</div>';
+        return;
+    }
+    
+    container.innerHTML = notifications.map(notif => `
+        <div class="notification-item ${!notif.read ? 'unread' : ''}">
+            <div>${notif.message}</div>
+            <div style="font-size: 0.8rem; color: #888; margin-top: 0.5rem;">
+                ${timeAgo(notif.created_at)}
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleNotifications() {
+    const notificationsBar = document.getElementById('notifications-bar');
+    notificationsBar.classList.toggle('show');
+    
+    if (notificationsBar.classList.contains('show')) {
+        loadNotifications();
+    }
+}
+
+// Location coordinates for Kenyan cities
+function getLocationCoords(city) {
+    const coords = {
+        'Nairobi': { lat: -1.2921, lng: 36.8219 },
+        'Mombasa': { lat: -4.0435, lng: 39.6682 },
+        'Kisumu': { lat: -0.0917, lng: 34.7680 },
+        'Nakuru': { lat: -0.3031, lng: 36.0800 },
+        'Eldoret': { lat: 0.5143, lng: 35.2698 }
+    };
+    return coords[city] || coords['Nairobi'];
+}
+
+// Weather functions
+async function loadWeather() {
+    if (!currentUser) return;
+    
+    try {
+        const data = await apiCall(`/api/weather?city=${currentUser.location}`);
+        const weatherBanner = document.getElementById('weather-banner');
+        const temp = data.temp_c;
+        const condition = data.condition;
+        
+        let suggestion = '';
+        if (temp >= 28) suggestion = 'Perfect for light fabrics';
+        else if (temp >= 22) suggestion = 'Great for casual wear';
+        else if (temp >= 16) suggestion = 'Ideal for layering';
+        else suggestion = 'Time for warm clothing';
+        
+        weatherBanner.innerHTML = `${temp}°C • ${condition} • ${suggestion}`;
+    } catch (error) {
+        console.error('Error loading weather:', error);
+        document.getElementById('weather-banner').innerHTML = 'Weather information unavailable';
+    }
+}
+
+// Image handling for posts with preview
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+        showNotification('Please select an image file', 'error');
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        showNotification('Image size must be less than 5MB', 'error');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.getElementById('image-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Resize image to max 800px width
+            const maxWidth = 800;
+            const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+            canvas.width = img.width * ratio;
+            canvas.height = img.height * ratio;
+            
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            selectedImage = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Show preview
+            document.getElementById('preview-image').src = selectedImage;
+            document.getElementById('image-preview').style.display = 'block';
+            
+            showNotification('Photo uploaded! 📸');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeImagePreview() {
+    selectedImage = null;
+    document.getElementById('image-preview').style.display = 'none';
+    document.getElementById('image-upload-input').value = '';
+}
+
+// Image handling for wardrobe
+function handleWardrobeImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+        showNotification('Please select an image file', 'error');
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        showNotification('Image size must be less than 5MB', 'error');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.getElementById('wardrobe-image-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Resize image to max 200px width for wardrobe thumbnails
+            const maxWidth = 200;
+            const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+            canvas.width = img.width * ratio;
+            canvas.height = img.height * ratio;
+            
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            wardrobeImage = canvas.toDataURL('image/jpeg', 0.8);
+            
+            showNotification('Wardrobe item photo uploaded! 📸');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+// Download image function
+function downloadImage(imageUrl, filename) {
+    if (!imageUrl) {
+        showNotification('No image to download', 'error');
+        return;
+    }
+
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = filename || 'outfit.jpg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showNotification('Image downloaded! 📸');
+}
+
+// Notification System
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type === 'error' ? 'error' : ''}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => notification.classList.add('show'), 100);
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Tab switching
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+    
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+    document.getElementById(`nav-${tabName}`).classList.add('active');
+    currentTab = tabName;
+    
+    if (tabName === 'explore') {
+        loadPosts();
+        loadWeather();
+    }
+    if (tabName === 'shop') searchShop();
+    if (tabName === 'profile') {
+        loadWardrobe();
+        loadOutfits();
+        updateDashboard();
+    }
+    if (tabName === 'map') initMap();
+    if (tabName === 'community') {
+        loadCommunityContent();
+        loadLeaderboards();
+    }
+    if (tabName === 'ai-dresser') {
+        loadCalendar();
+        loadTodaysOutfits();
+    }
+}
+
+// Community content
+function loadCommunityContent() {
+    loadActivityFeed();
+    loadLeaderboards();
+}
+
+async function loadActivityFeed() {
+    try {
+        const data = await apiCall('/api/community');
+        const activityFeed = document.getElementById('activity-feed');
+        
+        if (!data.activity || data.activity.length === 0) {
+            activityFeed.innerHTML = '<div class="empty-state"><p>No recent activity</p></div>';
+            return;
+        }
+        
+        activityFeed.innerHTML = data.activity.map(activity => `
+            <div class="activity-item">
+                <div class="activity-avatar">${activity.user.charAt(0)}</div>
+                <div class="activity-content">
+                    <div class="activity-user">${activity.user}</div>
+                    <div class="activity-text">${activity.action}</div>
+                    <div class="activity-time">${timeAgo(activity.created_at)}</div>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading activity feed:', error);
+    }
+}
+
+function loadLeaderboards() {
+    // Winners leaderboard based on star ratings from posts
+    const userRatings = {};
+    
+    // Calculate user ratings from posts
+    posts.forEach(post => {
+        if (!userRatings[post.user]) {
+            userRatings[post.user] = { totalStars: 0, postCount: 0 };
+        }
+        userRatings[post.user].totalStars += post.stars || 0;
+        userRatings[post.user].postCount += 1;
+    });
+    
+    // Convert to array and sort by total stars
+    const winners = Object.entries(userRatings)
+        .map(([name, data]) => ({
+            name,
+            totalStars: data.totalStars,
+            postCount: data.postCount,
+            avatar: name.charAt(0)
+        }))
+        .sort((a, b) => b.totalStars - a.totalStars)
+        .slice(0, 5);
+
+    const trendingStyles = [
+        { name: "Kente Accessories", count: 234, icon: "🟨🟫" },
+        { name: "Modern Dashiki", count: 189, icon: "👔" },
+        { name: "Beaded Jewelry", count: 167, icon: "📿" },
+        { name: "Ankara Blazers", count: 145, icon: "🧥" },
+        { name: "Djellaba & Caftan", count: 98, icon: "🥻" }
+    ];
+
+    const winnersHtml = winners.map((user, index) => `
+        <div class="leaderboard-item">
+            <div class="rank ${index < 3 ? `rank-${index + 1}` : ''}">${index + 1}</div>
+            <div class="avatar" style="width: 24px; height: 24px; font-size: 0.8rem;">${user.avatar}</div>
+            <div style="flex: 1;">${user.name}</div>
+            <div style="color: #888; font-size: 0.8rem;">${user.totalStars} ⭐</div>
+        </div>
+    `).join('');
+
+    const trendingHtml = trendingStyles.map((style, index) => `
+        <div class="trending-item">
+            <div class="trending-icon">${style.icon}</div>
+            <div class="trending-name">${style.name}</div>
+            <div class="trending-count">${style.count}</div>
+        </div>
+    `).join('');
+
+    document.getElementById('winners-leaderboard').innerHTML = winnersHtml;
+    document.getElementById('trending-styles').innerHTML = trendingHtml;
+}
+
+function showFullLeaderboard() {
+    alert('Full leaderboard feature coming soon! 🏆');
+}
+
+// API Functions
+async function apiCall(endpoint, method = 'GET', data = null) {
+    try {
+        const options = {
+            method,
+            headers: { 'Content-Type': 'application/json' }
+        };
+        if (data) options.body = JSON.stringify(data);
+        
+        const response = await fetch(`${API}${endpoint}`, options);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        showNotification('Connection error', 'error');
+        throw error;
+    }
+}
+
+// Social Feed Functions with improved star rating
+async function loadPosts() {
+    try {
+        const data = await apiCall('/api/posts');
+        posts = data.posts; // Update global posts array
+        const container = document.getElementById('posts-container');
+        
+        if (data.posts.length === 0) {
+            container.innerHTML = '<div class="empty-state"><h3>No posts yet</h3><p>Share your first outfit!</p></div>';
+            return;
+        }
+        
+        container.innerHTML = data.posts.map(post => `
+            <div class="post">
+                <div class="post-header">
+                    <div class="avatar">${post.user.charAt(0)}</div>
+                    <div>
+                        <div class="post-user">${post.user}</div>
+                        <div class="post-time">${timeAgo(post.created_at || Date.now())}</div>
+                    </div>
+                    ${post.user === currentUser?.name ? `
+                        <button class="btn small" onclick="editPost(${post.id})" style="margin-left: auto;">Edit</button>
+                    ` : ''}
+                </div>
+                <div class="post-image-container">
+                    ${post.image ? 
+                        `<img src="${post.image}" alt="Outfit" class="post-image">` : 
+                        `<div class="post-image">${getOutfitEmojis(post.outfit)}</div>`
+                    }
+                </div>
+                <div class="post-outfit">${post.outfit}</div>
+                ${post.purchaseInfo ? `
+                    <div class="post-purchase">Bought from: <a href="#" onclick="filterShop('${post.purchaseInfo.toLowerCase()}')">${post.purchaseInfo}</a></div>
+                ` : ''}
+                <div class="post-actions">
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="openRatingModal(${post.id})">
+                            ⭐ ${post.stars || 0}
+                        </button>
+                        <button class="action-btn" onclick="toggleComments(${post.id})">💬 ${post.comments ? post.comments.length : 0}</button>
+                        <button class="action-btn" onclick="downloadImage('${post.image}', 'outfit-${post.id}.jpg')">📥</button>
+                    </div>
+                </div>
+                <div class="comments-section" id="comments-${post.id}" style="display: none;">
+                    ${post.comments && post.comments.length > 0 ? post.comments.map(comment => `
+                        <div class="comment">
+                            <div class="comment-avatar">${comment.user.charAt(0)}</div>
+                            <div class="comment-content">
+                                <div class="comment-header">
+                                    <div class="comment-user">${comment.user}</div>
+                                    <div class="comment-time">${timeAgo(comment.created_at)}</div>
+                                </div>
+                                <div class="comment-text">${comment.text}</div>
+                            </div>
+                        </div>
+                    `).join('') : '<div style="text-align: center; color: #888; padding: 1rem;">No comments yet</div>'}
+                    <div class="add-comment">
+                        <input type="text" class="comment-input" id="comment-input-${post.id}" placeholder="Add a comment...">
+                        <button class="comment-btn" onclick="addComment(${post.id})">Post</button>
+                    </div>
+                </div>
+                <div class="edit-post" id="edit-${post.id}" style="display: none;">
+                    <textarea class="edit-input" id="edit-outfit-${post.id}">${post.outfit}</textarea>
+                    <input type="text" class="edit-input" id="edit-purchase-${post.id}" value="${post.purchaseInfo || ''}" placeholder="Where did you buy these items?">
+                    <div class="edit-actions">
+                        <button class="btn secondary" onclick="cancelEdit(${post.id})">Cancel</button>
+                        <button class="btn" onclick="savePost(${post.id})">Save</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        document.getElementById('posts-container').innerHTML = '<div class="empty-state"><h3>Could not load posts</h3></div>';
+    }
+}
+
+// Star Rating Modal Functions
+function openRatingModal(postId) {
+    currentRatingPostId = postId;
+    selectedRating = 0;
+    updateStarDisplay();
+    document.getElementById('rating-modal').classList.add('show');
+}
+
+function closeRatingModal() {
+    document.getElementById('rating-modal').classList.remove('show');
+    currentRatingPostId = null;
+    selectedRating = 0;
+}
+
+function setRating(stars) {
+    selectedRating = stars;
+    updateStarDisplay();
+}
+
+function updateStarDisplay() {
+    const stars = document.querySelectorAll('#modal-stars .star');
+    const ratingText = document.getElementById('rating-text');
+    
+    stars.forEach((star, index) => {
+        if (index < selectedRating) {
+            star.classList.add('active');
+        } else {
+            star.classList.remove('active');
+        }
+    });
+    
+    const texts = [
+        "Select your rating",
+        "Poor ⭐",
+        "Fair ⭐⭐", 
+        "Good ⭐⭐⭐",
+        "Very Good ⭐⭐⭐⭐",
+        "Excellent ⭐⭐⭐⭐⭐"
+    ];
+    ratingText.textContent = texts[selectedRating];
+}
+
+async function submitRating() {
+    if (!currentRatingPostId || selectedRating === 0) {
+        showNotification('Please select a rating', 'error');
+        return;
+    }
+    
+    try {
+        await apiCall(`/api/posts/${currentRatingPostId}/rate`, 'POST', {
+            stars: selectedRating,
+            username: currentUser.name
+        });
+        
+        showNotification(`Rated ${selectedRating} stars! ⭐`);
+        closeRatingModal();
+        loadPosts();
+    } catch (error) {
+        showNotification('Rating failed', 'error');
+    }
+}
+
+function editPost(postId) {
+    document.getElementById(`edit-${postId}`).style.display = 'block';
+}
+
+function cancelEdit(postId) {
+    document.getElementById(`edit-${postId}`).style.display = 'none';
+}
+
+async function savePost(postId) {
+    const outfit = document.getElementById(`edit-outfit-${postId}`).value.trim();
+    const purchaseInfo = document.getElementById(`edit-purchase-${postId}`).value.trim();
+    
+    if (!outfit) {
+        showNotification('Outfit description cannot be empty', 'error');
+        return;
+    }
+    
+    try {
+        // In a real app, this would call an API endpoint to update the post
+        const post = posts.find(p => p.id === postId);
+        if (post) {
+            post.outfit = outfit;
+            post.purchaseInfo = purchaseInfo || null;
+        }
+        
+        showNotification('Post updated! ✨');
+        cancelEdit(postId);
+        loadPosts();
+    } catch (error) {
+        showNotification('Failed to update post', 'error');
+    }
+}
+
+function toggleComments(postId) {
+    const commentsSection = document.getElementById(`comments-${postId}`);
+    commentsSection.style.display = commentsSection.style.display === 'none' ? 'block' : 'none';
+}
+
+async function addComment(postId) {
+    const commentInput = document.getElementById(`comment-input-${postId}`);
+    const commentText = commentInput.value.trim();
+    
+    if (!commentText) {
+        showNotification('Please enter a comment', 'error');
+        return;
+    }
+
+    try {
+        await apiCall(`/api/posts/${postId}/comments`, 'POST', {
+            user: currentUser.name,
+            text: commentText
+        });
+        
+        commentInput.value = '';
+        showNotification('Comment added! 💬');
+        loadPosts();
+    } catch (error) {
+        showNotification('Failed to add comment', 'error');
+    }
+}
+
+async function createPost() {
+    const outfit = document.getElementById('outfit-input').value.trim();
+    const purchaseInfo = document.getElementById('purchase-info').value.trim();
+    
+    if (!outfit) {
+        showNotification('Please describe your outfit', 'error');
+        return;
+    }
+    
+    try {
+        const postData = { 
+            user: currentUser.name, 
+            outfit: outfit,
+            location: currentUser.location
+        };
+        
+        if (selectedImage) {
+            postData.image = selectedImage;
+        }
+        if (purchaseInfo) {
+            postData.purchaseInfo = purchaseInfo;
+        }
+        
+        await apiCall('/api/posts', 'POST', postData);
+        
+        document.getElementById('outfit-input').value = '';
+        document.getElementById('purchase-info').value = '';
+        selectedImage = null;
+        document.getElementById('image-upload-input').value = '';
+        document.getElementById('image-preview').style.display = 'none';
+        showNotification('Outfit shared! 📸');
+        loadPosts();
+    } catch (error) {
+        showNotification('Failed to share outfit', 'error');
+    }
+}
+
+// Quick post from profile
+async function quickPostOutfit() {
+    const outfit = document.getElementById('quick-outfit-input').value.trim();
+    const purchaseInfo = document.getElementById('quick-purchase-info').value.trim();
+    
+    if (!outfit) {
+        showNotification('Please describe your outfit', 'error');
+        return;
+    }
+    
+    try {
+        const postData = { 
+            user: currentUser.name, 
+            outfit: outfit,
+            location: currentUser.location
+        };
+        
+        if (purchaseInfo) {
+            postData.purchaseInfo = purchaseInfo;
+        }
+        
+        await apiCall('/api/posts', 'POST', postData);
+        
+        document.getElementById('quick-outfit-input').value = '';
+        document.getElementById('quick-purchase-info').value = '';
+        showNotification('Outfit shared! 📸');
+        // Switch to explore tab to see the post
+        switchTab('explore');
+    } catch (error) {
+        showNotification('Failed to share outfit', 'error');
+    }
+}
+
+// Wardrobe Functions
+async function loadWardrobe() {
+    try {
+        const data = await apiCall('/api/wardrobe');
+        const container = document.getElementById('wardrobe-list');
+        
+        if (!data || !data.wardrobe || data.wardrobe.length === 0) {
+            container.innerHTML = '<div class="empty-state"><h3>Empty wardrobe</h3><p>Add your first item!</p></div>';
+            updateDashboard();
+            return;
+        }
+        
+        container.innerHTML = data.wardrobe.map(item => `
+            <div class="wardrobe-item">
+                ${item.image ? 
+                    `<img src="${item.image}" alt="${item.name}" class="item-image">` : 
+                    `<div class="item-icon">${item.icon || '👔'}</div>`
+                }
+                <div class="item-category">${getCategoryLabel(item.category)}</div>
+                <div class="item-color">${item.color}</div>
+                <div class="item-name">${item.name}</div>
+                <div class="item-details">${getPriceLabel(item.price_band)}</div>
+                ${item.worn_count > 0 ? `<div class="wear-count">Worn ${item.worn_count} times</div>` : ''}
+                <button class="btn secondary small" onclick="deleteWardrobeItem(${item.id})" style="margin-top: 0.5rem;">Remove</button>
+            </div>
+        `).join('');
+
+        // Update outfit creation dropdowns
+        updateOutfitDropdowns(data.wardrobe);
+        updateDashboard();
+    } catch (error) {
+        console.error('Error loading wardrobe:', error);
+        document.getElementById('wardrobe-list').innerHTML = '<div class="empty-state"><h3>Could not load wardrobe</h3><p>Check your connection and try again.</p></div>';
+    }
+}
+
+function getCategoryLabel(category) {
+    const labels = {
+        'top': '👕 Top',
+        'bottom': '👖 Bottom',
+        'dress': '👗 Dress',
+        'shoes': '👟 Shoes',
+        'outerwear': '🧥 Outerwear',
+        'cologne': '🌬️ Cologne',
+        'accessory': '💎 Accessory'
+    };
+    return labels[category] || category;
+}
+
+function getPriceLabel(priceBand) {
+    const prices = { low: 'KES 1,500', medium: 'KES 4,000', high: 'KES 12,000' };
+    return prices[priceBand] || 'KES 3,000';
+}
+
+function updateOutfitDropdowns(wardrobe) {
+    const tops = wardrobe.filter(item => item.category === 'top');
+    const bottoms = wardrobe.filter(item => item.category === 'bottom');
+    const shoes = wardrobe.filter(item => item.category === 'shoes');
+    const outerwear = wardrobe.filter(item => item.category === 'outerwear');
+    const accessories = wardrobe.filter(item => item.category === 'accessory');
+    const colognes = wardrobe.filter(item => item.category === 'cologne');
+
+    updateDropdown('outfit-top', tops);
+    updateDropdown('outfit-bottom', bottoms);
+    updateDropdown('outfit-shoes', shoes);
+    updateDropdown('outfit-outerwear', outerwear);
+    updateDropdown('outfit-accessory', accessories);
+    updateDropdown('outfit-cologne', colognes);
+}
+
+function updateDropdown(dropdownId, items) {
+    const dropdown = document.getElementById(dropdownId);
+    dropdown.innerHTML = `<option value="">Select ${dropdownId.split('-')[1]}</option>` +
+        items.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+}
+
+async function addWardrobeItem() {
+    const name = document.getElementById('item-name').value.trim();
+    const category = document.getElementById('item-category').value;
+    const color = document.getElementById('item-color').value;
+    
+    if (!name) {
+        showNotification('Please enter item name', 'error');
+        return;
+    }
+    
+    const icons = { 
+        top: '👕', 
+        bottom: '👖', 
+        dress: '👗', 
+        shoes: '👟', 
+        outerwear: '🧥', 
+        cologne: '🌬️',
+        accessory: '💎'
+    };
+    
+    try {
+        const itemData = {
+            name,
+            category,
+            color,
+            icon: icons[category],
+            price_band: 'medium',
+            worn_count: 0,
+            username: currentUser.name
+        };
+        
+        if (wardrobeImage) {
+            itemData.image = wardrobeImage;
+        }
+        
+        await apiCall('/api/wardrobe', 'POST', itemData);
+        
+        document.getElementById('item-name').value = '';
+        document.getElementById('item-category').value = 'top';
+        document.getElementById('item-color').value = 'white';
+        document.getElementById('wardrobe-image-upload').value = '';
+        wardrobeImage = null;
+        showNotification(`${icons[category]} ${name} added to wardrobe!`);
+        loadWardrobe();
+        loadNotifications(); // Refresh notifications for potential reminders
+    } catch (error) {
+        console.error('Error adding wardrobe item:', error);
+        showNotification('Failed to add item', 'error');
+    }
+}
+
+async function deleteWardrobeItem(itemId) {
+    if (!confirm('Remove this item?')) return;
+    
+    try {
+        await apiCall(`/api/wardrobe/${itemId}`, 'DELETE');
+        showNotification('Item removed');
+        loadWardrobe();
+    } catch (error) {
+        console.error('Error deleting wardrobe item:', error);
+        showNotification('Failed to remove item', 'error');
+    }
+}
+
+// Outfit Functions
+async function loadOutfits() {
+    // Load outfits from localStorage
+    const savedOutfits = localStorage.getItem(`outfits_${currentUser.name}`);
+    userOutfits = savedOutfits ? JSON.parse(savedOutfits) : [];
+    
+    // Load scheduled outfits
+    const savedScheduled = localStorage.getItem(`scheduled_${currentUser.name}`);
+    scheduledOutfits = savedScheduled ? JSON.parse(savedScheduled) : {};
+    
+    displayOutfits();
+}
+
+function displayOutfits() {
+    const container = document.getElementById('outfits-list');
+    
+    if (userOutfits.length === 0) {
+        container.innerHTML = '<div class="empty-state"><h3>No outfits created yet</h3><p>Combine your wardrobe items to create outfits!</p></div>';
+        return;
+    }
+    
+    container.innerHTML = userOutfits.map(outfit => {
+        const wearCount = outfit.wear_count || 0;
+        return `
+            <div class="outfit-combination">
+                <div class="outfit-header">
+                    <div class="outfit-name">${outfit.name}</div>
+                    <div class="outfit-wear-count">Worn ${wearCount} times</div>
+                </div>
+                <div class="outfit-items">
+                    ${outfit.top ? `
+                        <div class="outfit-item">
+                            ${outfit.topImage ? `<img src="${outfit.topImage}" alt="${outfit.top}" class="outfit-item-image">` : '<div class="item-icon">👕</div>'}
+                            <div class="outfit-item-name">${outfit.top}</div>
+                            <div class="outfit-item-type">Top</div>
+                        </div>
+                    ` : ''}
+                    ${outfit.bottom ? `
+                        <div class="outfit-item">
+                            ${outfit.bottomImage ? `<img src="${outfit.bottomImage}" alt="${outfit.bottom}" class="outfit-item-image">` : '<div class="item-icon">👖</div>'}
+                            <div class="outfit-item-name">${outfit.bottom}</div>
+                            <div class="outfit-item-type">Bottom</div>
+                        </div>
+                    ` : ''}
+                    ${outfit.shoes ? `
+                        <div class="outfit-item">
+                            ${outfit.shoesImage ? `<img src="${outfit.shoesImage}" alt="${outfit.shoes}" class="outfit-item-image">` : '<div class="item-icon">👟</div>'}
+                            <div class="outfit-item-name">${outfit.shoes}</div>
+                            <div class="outfit-item-type">Shoes</div>
+                        </div>
+                    ` : ''}
+                    ${outfit.outerwear ? `
+                        <div class="outfit-item">
+                            ${outfit.outerwearImage ? `<img src="${outfit.outerwearImage}" alt="${outfit.outerwear}" class="outfit-item-image">` : '<div class="item-icon">🧥</div>'}
+                            <div class="outfit-item-name">${outfit.outerwear}</div>
+                            <div class="outfit-item-type">Outerwear</div>
+                        </div>
+                    ` : ''}
+                    ${outfit.accessory ? `
+                        <div class="outfit-item">
+                            ${outfit.accessoryImage ? `<img src="${outfit.accessoryImage}" alt="${outfit.accessory}" class="outfit-item-image">` : '<div class="item-icon">💎</div>'}
+                            <div class="outfit-item-name">${outfit.accessory}</div>
+                            <div class="outfit-item-type">Accessory</div>
+                        </div>
+                    ` : ''}
+                    ${outfit.cologne ? `
+                        <div class="outfit-item">
+                            ${outfit.cologneImage ? `<img src="${outfit.cologneImage}" alt="${outfit.cologne}" class="outfit-item-image">` : '<div class="item-icon">🌬️</div>'}
+                            <div class="outfit-item-name">${outfit.cologne}</div>
+                            <div class="outfit-item-type">Cologne</div>
+                        </div>
+                    ` : ''}
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    <button class="btn small" onclick="wearOutfit(${outfit.id})">Wear This</button>
+                    <button class="btn small secondary" onclick="scheduleOutfit(${outfit.id})">Schedule</button>
+                    <button class="btn small danger" onclick="deleteOutfit(${outfit.id})">Delete</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function createOutfit() {
+    const topId = document.getElementById('outfit-top').value;
+    const bottomId = document.getElementById('outfit-bottom').value;
+    const shoesId = document.getElementById('outfit-shoes').value;
+    const outerwearId = document.getElementById('outfit-outerwear').value;
+    const accessoryId = document.getElementById('outfit-accessory').value;
+    const cologneId = document.getElementById('outfit-cologne').value;
+    const name = document.getElementById('outfit-name').value.trim();
+    
+    if (!topId || !bottomId || !shoesId || !name) {
+        showNotification('Please select top, bottom, shoes and name the outfit', 'error');
+        return;
+    }
+
+    // Get item details from wardrobe
+    const wardrobeData = JSON.parse(localStorage.getItem('wardrobe') || '[]');
+    
+    const getItemDetails = (id) => {
+        const item = wardrobeData.find(item => item.id == id);
+        return item ? { name: item.name, image: item.image } : { name: 'Unknown', image: null };
+    };
+
+    const topDetails = getItemDetails(topId);
+    const bottomDetails = getItemDetails(bottomId);
+    const shoesDetails = getItemDetails(shoesId);
+    const outerwearDetails = outerwearId ? getItemDetails(outerwearId) : null;
+    const accessoryDetails = accessoryId ? getItemDetails(accessoryId) : null;
+    const cologneDetails = cologneId ? getItemDetails(cologneId) : null;
+
+    const outfit = {
+        id: Date.now(),
+        name: name,
+        top: topDetails.name,
+        topImage: topDetails.image,
+        bottom: bottomDetails.name,
+        bottomImage: bottomDetails.image,
+        shoes: shoesDetails.name,
+        shoesImage: shoesDetails.image,
+        outerwear: outerwearDetails ? outerwearDetails.name : null,
+        outerwearImage: outerwearDetails ? outerwearDetails.image : null,
+        accessory: accessoryDetails ? accessoryDetails.name : null,
+        accessoryImage: accessoryDetails ? accessoryDetails.image : null,
+        cologne: cologneDetails ? cologneDetails.name : null,
+        cologneImage: cologneDetails ? cologneDetails.image : null,
+        created: new Date().toISOString(),
+        wear_count: 0
+    };
+
+    userOutfits.push(outfit);
+    localStorage.setItem(`outfits_${currentUser.name}`, JSON.stringify(userOutfits));
+    
+    showNotification(`Outfit "${name}" created! 👗`);
+    displayOutfits();
+    updateDashboard();
+    
+    // Reset form
+    document.getElementById('outfit-name').value = '';
+    document.getElementById('outfit-top').value = '';
+    document.getElementById('outfit-bottom').value = '';
+    document.getElementById('outfit-shoes').value = '';
+    document.getElementById('outfit-outerwear').value = '';
+    document.getElementById('outfit-accessory').value = '';
+    document.getElementById('outfit-cologne').value = '';
+}
+
+function wearOutfit(outfitId) {
+    const outfit = userOutfits.find(o => o.id === outfitId);
+    if (outfit) {
+        outfit.wear_count = (outfit.wear_count || 0) + 1;
+        localStorage.setItem(`outfits_${currentUser.name}`, JSON.stringify(userOutfits));
+        showNotification(`Wearing ${outfit.name} today! 👗`);
+        displayOutfits();
+    }
+}
+
+function scheduleOutfit(outfitId) {
+    const outfit = userOutfits.find(o => o.id === outfitId);
+    if (outfit) {
+        const date = prompt('Enter date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+        if (date) {
+            if (!scheduledOutfits[date]) {
+                scheduledOutfits[date] = [];
+            }
+            scheduledOutfits[date].push(outfit);
+            localStorage.setItem(`scheduled_${currentUser.name}`, JSON.stringify(scheduledOutfits));
+            showNotification(`Scheduled ${outfit.name} for ${date}! 📅`);
+            loadCalendar();
+        }
+    }
+}
+
+function deleteOutfit(outfitId) {
+    userOutfits = userOutfits.filter(outfit => outfit.id !== outfitId);
+    localStorage.setItem(`outfits_${currentUser.name}`, JSON.stringify(userOutfits));
+    showNotification('Outfit deleted');
+    displayOutfits();
+    updateDashboard();
+}
+
+function updateDashboard() {
+    const wardrobeData = JSON.parse(localStorage.getItem('wardrobe') || '[]');
+    document.getElementById('total-items').textContent = wardrobeData.length;
+    document.getElementById('total-outfits').textContent = userOutfits.length;
+}
+
+// Calendar Functions
+function loadCalendar() {
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    document.getElementById('current-month').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+    
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDay = firstDay.getDay();
+    
+    let calendarHTML = '';
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDay; i++) {
+        calendarHTML += '<div class="calendar-day"></div>';
+    }
+    
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const hasEvent = scheduledOutfits[dateStr] && scheduledOutfits[dateStr].length > 0;
+        
+        calendarHTML += `
+            <div class="calendar-day ${hasEvent ? 'has-event' : ''}" onclick="viewDayOutfits('${dateStr}')">
+                <div class="day-number">${day}</div>
+                ${hasEvent ? '<div class="event-dot"></div>' : ''}
+            </div>
+        `;
+    }
+    
+    document.getElementById('calendar-grid').innerHTML = calendarHTML;
+}
+
+function previousMonth() {
+    currentMonth--;
+    if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+    }
+    loadCalendar();
+}
+
+function nextMonth() {
+    currentMonth++;
+    if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+    }
+    loadCalendar();
+}
+
+function viewDayOutfits(dateStr) {
+    const outfits = scheduledOutfits[dateStr] || [];
+    if (outfits.length > 0) {
+        let outfitsHTML = '<h4>Outfits for ' + dateStr + '</h4>';
+        outfits.forEach(outfit => {
+            outfitsHTML += `
+                <div class="scheduled-outfit">
+                    <span>${outfit.name}</span>
+                    <button class="btn small danger" onclick="removeScheduledOutfit('${dateStr}', ${outfit.id})">Remove</button>
+                </div>
+            `;
+        });
+        document.getElementById('todays-outfits').innerHTML = outfitsHTML;
+    } else {
+        document.getElementById('todays-outfits').innerHTML = '<p>No outfits scheduled for this day.</p>';
+    }
+}
+
+function removeScheduledOutfit(dateStr, outfitId) {
+    if (scheduledOutfits[dateStr]) {
+        scheduledOutfits[dateStr] = scheduledOutfits[dateStr].filter(o => o.id !== outfitId);
+        if (scheduledOutfits[dateStr].length === 0) {
+            delete scheduledOutfits[dateStr];
+        }
+        localStorage.setItem(`scheduled_${currentUser.name}`, JSON.stringify(scheduledOutfits));
+        showNotification('Outfit removed from schedule');
+        loadCalendar();
+        loadTodaysOutfits();
+    }
+}
+
+function loadTodaysOutfits() {
+    const today = new Date().toISOString().split('T')[0];
+    viewDayOutfits(today);
+}
+
+// AI Recommendations
+async function getAIRecommendation() {
+    try {
+        const occasion = document.getElementById('occasion').value;
+        
+        const params = new URLSearchParams({ 
+            occasion: occasion,
+            location: currentUser.location 
+        });
+        
+        const data = await apiCall(`/api/dresser?${params}`);
+        
+        // Add cologne suggestion
+        const wardrobeData = JSON.parse(localStorage.getItem('wardrobe') || '[]');
+        const colognes = wardrobeData.filter(item => item.category === 'cologne');
+        let cologneSuggestion = '';
+        
+        if (colognes.length > 0) {
+            const randomCologne = colognes[Math.floor(Math.random() * colognes.length)];
+            cologneSuggestion = ` Complete your look with ${randomCologne.name} cologne.`;
+        } else {
+            cologneSuggestion = ' Consider adding a cologne to complete your outfit.';
+        }
+        
+        document.getElementById('ai-result').innerHTML = `
+            <div class="ai-suggestion">
+                <h3>✨ Perfect Outfit for ${occasion.charAt(0).toUpperCase() + occasion.slice(1)}</h3>
+                <div class="suggestion-outfit">${data.outfit}${cologneSuggestion}</div>
+                <div class="suggestion-tip">💡 ${data.tip}</div>
+                <button class="btn secondary" onclick="getAIRecommendation()" style="margin-top: 1rem;">New Suggestion</button>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error getting AI recommendation:', error);
+        document.getElementById('ai-result').innerHTML = `
+            <div class="ai-suggestion">
+                <h3>🤖 Need more items!</h3>
+                <div class="suggestion-outfit">Add more clothes to your wardrobe for better suggestions</div>
+                <div class="suggestion-tip">💡 Try adding tops, bottoms, shoes, and accessories</div>
+            </div>
+        `;
+    }
+}
+
+async function getShopSuggestions() {
+    const occasion = document.getElementById('shop-occasion').value;
+    const weather = document.getElementById('shop-weather').value;
+    
+    // Filter shop items based on occasion and weather
+    let suggestions = [];
+    
+    if (weather === 'hot') {
+        suggestions = suggestions.concat(getHeritageItems('dashiki'));
+        suggestions = suggestions.concat(getHeritageItems('djellaba'));
+    }
+    if (occasion === 'cultural') {
+        suggestions = suggestions.concat(getHeritageItems('kente'));
+        suggestions = suggestions.concat(getHeritageItems('ankara'));
+    }
+    if (occasion === 'work') {
+        suggestions = suggestions.concat(getHeritageItems('ankara'));
+    }
+    if (occasion === 'date' || occasion === 'event') {
+        suggestions = suggestions.concat(getHeritageItems('djellaba'));
+        suggestions = suggestions.concat(getHeritageItems('cologne'));
+    }
+    
+    const container = document.getElementById('shop-suggestions');
+    if (suggestions.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No suggestions found</p></div>';
+        return;
+    }
+    
+    container.innerHTML = suggestions.map(item => `
+        <div class="shop-item">
+            ${item.image ? 
+                `<img src="${item.image}" alt="${item.name}" class="shop-item-image">` : 
+                `<div class="shop-icon">${item.icon}</div>`
+            }
+            <div class="shop-name">${item.name}</div>
+            <div class="shop-price">KES ${getPriceFromBand(item.price_band)}</div>
+            <div class="shop-store">${item.merchant}</div>
+            <button class="btn small" onclick="buyItem('${item.name}', '${item.icon}', '${item.category}', '${item.price_band}', '${item.image || ''}')" style="width: 100%; margin-top: 0.5rem;">Add to Wardrobe</button>
+        </div>
+    `).join('');
+}
+
+// Shop Functions
+function filterShop(category) {
+    currentShopFilter = category;
+    
+    // Update active category
+    document.querySelectorAll('.category-card').forEach(card => card.classList.remove('active'));
+    event.target.closest('.category-card')?.classList.add('active');
+    
+    searchShop();
+}
+
+async function searchShop() {
+    try {
+        const searchTerm = document.getElementById('search-input')?.value || '';
+        const params = new URLSearchParams({ region: currentUser?.location || 'Nairobi' });
+        if (currentShopFilter !== 'all') params.set('category', currentShopFilter);
+        
+        // Get regular shop data
+        const data = await apiCall(`/api/shops/search?${params}`);
+        let results = data.results || [];
+        
+        // Add African heritage items based on filter
+        if (currentShopFilter === 'kente' || currentShopFilter === 'all') {
+            results = results.concat(getHeritageItems('kente'));
+        }
+        if (currentShopFilter === 'dashiki' || currentShopFilter === 'all') {
+            results = results.concat(getHeritageItems('dashiki'));
+        }
+        if (currentShopFilter === 'ankara' || currentShopFilter === 'all') {
+            results = results.concat(getHeritageItems('ankara'));
+        }
+        if (currentShopFilter === 'djellaba' || currentShopFilter === 'all') {
+            results = results.concat(getHeritageItems('djellaba'));
+        }
+        if (currentShopFilter === 'jewelry' || currentShopFilter === 'all') {
+            results = results.concat(getHeritageItems('jewelry'));
+        }
+        if (currentShopFilter === 'cologne' || currentShopFilter === 'all') {
+            results = results.concat(getHeritageItems('cologne'));
+        }
+        
+        // Filter by search term
+        if (searchTerm) {
+            results = results.filter(item => 
+                item.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+        
+        const container = document.getElementById('shop-results');
+        
+        if (!results || results.length === 0) {
+            container.innerHTML = '<div class="empty-state"><h3>No items found</h3><p>Try a different search or category.</p></div>';
+            return;
+        }
+        
+        container.innerHTML = results.map(item => `
+            <div class="shop-item">
+                ${item.image ? 
+                    `<img src="${item.image}" alt="${item.name}" class="shop-item-image">` : 
+                    `<div class="shop-icon">${item.icon}</div>`
+                }
+                <div class="shop-name">${item.name}</div>
+                <div class="shop-price">KES ${getPriceFromBand(item.price_band)}</div>
+                <div class="shop-store">${item.merchant}</div>
+                <button class="btn small" onclick="buyItem('${item.name}', '${item.icon}', '${item.category}', '${item.price_band}', '${item.image || ''}')" style="width: 100%; margin-top: 0.5rem;">Add to Wardrobe</button>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error searching shop:', error);
+        document.getElementById('shop-results').innerHTML = '<div class="empty-state"><h3>Could not load shop items</h3><p>Check your connection and try again.</p></div>';
+    }
+}
+
+async function addShopItem() {
+    if (!isMerchant) {
+        showNotification('Only merchants can add items', 'error');
+        return;
+    }
+
+    const name = document.getElementById('new-item-name').value.trim();
+    const category = document.getElementById('new-item-category').value;
+    const price_band = document.getElementById('new-item-price').value;
+
+    if (!name) {
+        showNotification('Please enter item name', 'error');
+        return;
+    }
+
+    try {
+        const response = await apiCall('/api/shops/merchant', 'POST', {
+            name: name,
+            category: category,
+            price_band: price_band
+        });
+        
+        showNotification(`Item "${name}" added to shop! 🛍️`);
+        
+        // Clear form
+        document.getElementById('new-item-name').value = '';
+        document.getElementById('new-item-category').value = 'top';
+        document.getElementById('new-item-price').value = 'medium';
+        
+        // Refresh shop to show the new item
+        searchShop();
+    } catch (error) {
+        console.error('Error adding shop item:', error);
+        showNotification('Failed to add item to shop', 'error');
+    }
+}
+
+async function buyItem(name, icon, category, price_band, image = '') {
+    try {
+        const itemData = {
+            name,
+            icon,
+            category,
+            price_band,
+            color: 'neutral',
+            image: image,
+            worn_count: 0,
+            username: currentUser.name
+        };
+        
+        await apiCall('/api/wardrobe', 'POST', itemData);
+        
+        showNotification(`${icon} ${name} added to wardrobe!`);
+        loadWardrobe(); // This will refresh the wardrobe and update counts
+    } catch (error) {
+        console.error('Error buying item:', error);
+        // Fallback: Add to local storage
+        const wardrobeData = JSON.parse(localStorage.getItem('wardrobe') || '[]');
+        const newItem = {
+            id: Date.now(),
+            ...itemData
+        };
+        wardrobeData.push(newItem);
+        localStorage.setItem('wardrobe', JSON.stringify(wardrobeData));
+        showNotification('Purchase successful! Item added to wardrobe. 🛍️');
+        loadWardrobe(); // Refresh to show the new item
+    }
+}
+
+function getHeritageItems(type) {
+    const heritageItems = {
+        "kente": [
+            {"name": "Traditional Kente Headband", "icon": "🎀", "category": "accessory", "price_band": "medium", "merchant": "African Heritage Store", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBj4ooh580p9xkFN3LtclZ1XEg-SvDaXxAFw&s"},
+            {"name": "Kente Print Bow Tie", "icon": "🎗️", "category": "accessory", "price_band": "low", "merchant": "Cultural Fashion Hub", "image": "https://sonson.com/cdn/shop/products/StreetArt_RemovedBackground_2.jpg?v=1682190419"},
+            {"name": "Kente Woven Belt", "icon": "🏷️", "category": "accessory", "price_band": "medium", "merchant": "Ghana Imports KE", "image": "https://ribbonbydesign.com/cdn/shop/files/kente_style_pattern-1_C__64804.1683049337.1280.1280.jpg?v=1691931775&width=1445"}
+        ],
+        "dashiki": [
+            {"name": "Modern Dashiki Shirt", "icon": "👔", "category": "top", "price_band": "medium", "merchant": "Afrocentric Styles", "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxxKn4ViDHq-6eLrDraDwXcXIx2m_eS4DhdQ&s"},
+            {"name": "Dashiki Print Blouse", "icon": "👚", "category": "top", "price_band": "medium", "merchant": "Ubuntu Fashion", "image": "https://m.media-amazon.com/images/I/719O--kiRlL._UY1000_.jpg"},
+            {"name": "Contemporary Dashiki Dress", "icon": "👗", "category": "dress", "price_band": "high", "merchant": "African Elegance", "image": "https://lh6.googleusercontent.com/proxy/zWcCDaGahniOhm3lZp6DMjz1YjEnM9yIOCtd6FtpTjwFpFV7my_vOpFb-s8ByZGhBfOFe7vBMJBpXgsK_45oaLCn9AJDnYYW65y1_CcC1YyJ"}
+        ],
+        "ankara": [
+            {"name": "Ankara Print Blazer", "icon": "🧥", "category": "outerwear", "price_band": "high", "merchant": "Ankara Couture", "image": "https://kipfashion.com/wp-content/uploads/2020/06/Ankara-print-Denzel-Blazer.png"},
+            {"name": "Ankara Business Jacket", "icon": "🧥", "category": "outerwear", "price_band": "high", "merchant": "Professional African Wear", "image": "https://ophclothing.com/storage/2021/08/8729.jpg"},
+            {"name": "Ankara Casual Blazer", "icon": "🧥", "category": "outerwear", "price_band": "medium", "merchant": "Modern African Fashion", "image": "https://i0.wp.com/kipfashion.com/wp-content/uploads/2020/06/Ankara-print-Men-blazer.png?fit=580%2C577&ssl=1"}
+        ],
+        "djellaba": [
+            {"name": "Traditional Djellaba", "icon": "🥻", "category": "dress", "price_band": "medium", "merchant": "North African Styles", "image": "https://thedjellaba.com/cdn/shop/files/djellaba-royale-witgoud-897922.jpg?v=1737094418"},
+            {"name": "Embroidered Caftan", "icon": "🥻", "category": "dress", "price_band": "high", "merchant": "Moroccan Elegance", "image": "https://momonewyork.com/cdn/shop/products/bella-flor-embroidered-caftan-x-free-people-momo-new-york-949785_1080x.jpg?v=1672118916"},
+            {"name": "Modern Caftan Dress", "icon": "👗", "category": "dress", "price_band": "medium", "merchant": "Contemporary African", "image": "https://miss-burkini.com/cdn/shop/files/CaftanmoderneSafiya_5dda4518-0218-4751-9875-91919c53d0d2.png?v=1741176345"}
+        ],
+        "jewelry": [
+            {"name": "Maasai Beaded Necklace", "icon": "📿", "category": "accessory", "price_band": "medium", "merchant": "Maasai Crafts Collective", "image": "https://i.pinimg.com/736x/43/0f/2e/430f2e3534c2538bf36a5127d9bd87db.jpg"},
+            {"name": "Traditional Beaded Bracelet", "icon": "💎", "category": "accessory", "price_band": "low", "merchant": "Handmade Kenya", "image": "https://www.themaasaimarket.com/4794-large_default/milele-maasai-bracelet-blues.jpg"},
+            {"name": "Ethnic Beaded Earrings", "icon": "💍", "category": "accessory", "price_band": "low", "merchant": "Cultural Jewelry Store", "image": "https://m.media-amazon.com/images/I/81rj0UIm6fL._UF1000,1000_QL80_.jpg"}
+        ],
+        "cologne": [
+            {"name": "Safari Essence Cologne", "icon": "🌬️", "category": "cologne", "price_band": "medium", "merchant": "African Scents", "image": "https://perfume-essence.com/media/catalog/product/cache/9110975d72d9707b7bc93e05e75366a6/s/a/safari_for_men.jpg"},
+            {"name": "Nile Breeze Fragrance", "icon": "🌬️", "category": "cologne", "price_band": "high", "merchant": "Luxury Scents KE", "image": "https://hijaz.com/cdn/shop/products/blue-nile-alcohol-free-cologne-scented-body-oil-perfume-577944_1200x.jpg?v=1665592864"},
+            {"name": "Savanna Mist Cologne", "icon": "🌬️", "category": "cologne", "price_band": "medium", "merchant": "Modern Fragrances", "image": "https://shop.rainafrica.co.za/cdn/shop/files/Savannah_Mist.jpg?v=1746030680"}
+        ]
+    };
+    
+    return heritageItems[type] || [];
+}
+
+// Map Functions with Emergency Locations
+function initMap() {
+    // Initialize Leaflet map
+    if (map) {
+        map.remove();
+    }
+    
+    map = L.map('map-view').setView([-1.2921, 36.8219], 6); // Centered on Kenya
+    
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    
+    // Add user markers
+    addUserMarkers();
+    
+    // Add click event for new locations
+    map.on('click', function(e) {
+        if (emergencyLocationCoords === 'waiting') {
+            // Set emergency location coordinates
+            document.getElementById('emergency-lat').value = e.latlng.lat.toFixed(6);
+            document.getElementById('emergency-lng').value = e.latlng.lng.toFixed(6);
+            emergencyLocationCoords = e.latlng;
+            showNotification('Emergency location coordinates set!');
+        } else {
+            addCustomLocation(e.latlng.lat, e.latlng.lng);
+        }
+    });
+}
+
+function addUserMarkers() {
+    // Sample users with different locations
+    const users = [
+        { name: "Alex", initial: "A", location: "Nairobi", lat: -1.2921, lng: 36.8219, outfit: "Casual Friday look with denim" },
+        { name: "Sarah", initial: "S", location: "Mombasa", lat: -4.0435, lng: 39.6682, outfit: "Beach vibes with flowy dress" },
+        { name: "Mike", initial: "M", location: "Kisumu", lat: -0.0917, lng: 34.7680, outfit: "Smart casual for work meeting" },
+        { name: "Grace", initial: "G", location: "Nakuru", lat: -0.3031, lng: 36.0800, outfit: "Traditional dashiki for cultural event" },
+        { name: "John", initial: "J", location: "Eldoret", lat: 0.5143, lng: 35.2698, outfit: "Athletic wear for morning run" }
+    ];
+    
+    // Add current user
+    if (currentUser) {
+        users.push({
+            name: currentUser.name,
+            initial: currentUser.initial,
+            location: currentUser.location,
+            lat: currentUser.lat,
+            lng: currentUser.lng,
+            outfit: "Your latest outfit post"
+        });
+    }
+    
+    // Add custom locations
+    const savedLocations = localStorage.getItem(`locations_${currentUser.name}`);
+    customLocations = savedLocations ? JSON.parse(savedLocations) : [];
+    
+    users.forEach(user => {
+        const marker = L.marker([user.lat, user.lng]).addTo(map);
+        marker.bindPopup(`
+            <b>${user.name}</b><br>
+            📍 ${user.location}<br>
+            👔 ${user.outfit}
+        `);
+    });
+    
+    // Add custom locations
+    customLocations.forEach(location => {
+        const marker = L.marker([location.lat, location.lng]).addTo(map);
+        marker.bindPopup(`
+            <b>${currentUser.name}</b><br>
+            📍 ${location.caption || 'Custom Location'}<br>
+            <button class="delete-marker-btn" onclick="deleteCustomLocation(${location.id})">Delete Marker</button>
+        `);
+    });
+    
+    // Add emergency locations
+    loadEmergencyLocations();
+}
+
+async function loadEmergencyLocations() {
+    if (!currentUser) return;
+    
+    try {
+        const data = await apiCall(`/api/emergency-locations?username=${currentUser.name}`);
+        const locations = data.locations || [];
+        
+        locations.forEach(location => {
+            const marker = L.marker([location.lat, location.lng], {
+                icon: L.divIcon({
+                    className: 'emergency-marker',
+                    html: '🚨',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15]
+                })
+            }).addTo(map);
+            
+            marker.bindPopup(`
+                <b>🚨 ${location.name}</b><br>
+                Emergency Location<br>
+                Trusted users: ${location.trusted_users.join(', ') || 'None'}
+            `);
+        });
+    } catch (error) {
+        console.error('Error loading emergency locations:', error);
+    }
+}
+
+function addNewLocation() {
+    showNotification('Click anywhere on the map to add a new location! 🗺️');
+}
+
+function addCustomLocation(lat, lng) {
+    const caption = prompt('Add a caption for this location:') || 'My favorite spot';
+    
+    const location = {
+        id: Date.now(),
+        caption: caption,
+        lat: lat,
+        lng: lng,
+        addedBy: currentUser.name,
+        addedAt: new Date().toISOString()
+    };
+    
+    customLocations.push(location);
+    localStorage.setItem(`locations_${currentUser.name}`, JSON.stringify(customLocations));
+    
+    // Add marker to map
+    const marker = L.marker([lat, lng]).addTo(map);
+    marker.bindPopup(`
+        <b>${currentUser.name}</b><br>
+        📍 ${caption}<br>
+        <button class="delete-marker-btn" onclick="deleteCustomLocation(${location.id})">Delete Marker</button>
+    `);
+    
+    showNotification(`Location "${caption}" added! 📍`);
+}
+
+function deleteCustomLocation(locationId) {
+    customLocations = customLocations.filter(loc => loc.id !== locationId);
+    localStorage.setItem(`locations_${currentUser.name}`, JSON.stringify(customLocations));
+    initMap(); // Refresh map
+    showNotification('Location marker deleted');
+}
+
+// Emergency Location Functions
+function showEmergencyLocationModal() {
+    emergencyLocationCoords = 'waiting';
+    document.getElementById('emergency-modal').classList.add('show');
+    showNotification('Click on the map to set emergency location coordinates');
+}
+
+function closeEmergencyModal() {
+    document.getElementById('emergency-modal').classList.remove('show');
+    emergencyLocationCoords = null;
+}
+
+async function saveEmergencyLocation() {
+    const name = document.getElementById('emergency-name').value.trim();
+    const lat = document.getElementById('emergency-lat').value;
+    const lng = document.getElementById('emergency-lng').value;
+    const trustedUsers = document.getElementById('emergency-trusted').value.split(',').map(u => u.trim()).filter(u => u);
+    
+    if (!name || !lat || !lng) {
+        showNotification('Please provide location name and coordinates', 'error');
+        return;
+    }
+    
+    try {
+        await apiCall('/api/emergency-locations', 'POST', {
+            username: currentUser.name,
+            name: name,
+            lat: parseFloat(lat),
+            lng: parseFloat(lng),
+            trusted_users: trustedUsers
+        });
+        
+        showNotification('Emergency location saved! 🚨');
+        closeEmergencyModal();
+        initMap(); // Refresh map to show new emergency location
+        
+        // Clear form
+        document.getElementById('emergency-name').value = '';
+        document.getElementById('emergency-lat').value = '';
+        document.getElementById('emergency-lng').value = '';
+        document.getElementById('emergency-trusted').value = '';
+    } catch (error) {
+        showNotification('Failed to save emergency location', 'error');
+    }
+}
+
+// Utility Functions
+function timeAgo(timestamp) {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diff = Math.floor((now - time) / 1000);
+    
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return Math.floor(diff / 86400) + 'd ago';
+}
+
+function getOutfitEmojis(outfit) {
+    const emojis = outfit.match(/[👔👕👖👗🧥👟👠🩴👞🧦🌬️]/g);
+    return emojis ? emojis.slice(0, 3).join('') : '👔✨';
+}
+
+function getPriceFromBand(band) {
+    const prices = { low: '1,500', medium: '4,000', high: '12,000' };
+    return prices[band] || '3,000';
+}
+
+// Initialize
+async function loadInitialData() {
+    showLoadingScreen();
+    await loadPosts();
+    await loadWardrobe();
+    await loadOutfits();
+    await loadWeather();
+    updateDashboard();
+    setTimeout(hideLoadingScreen, 2000);
+}
+
+// Close modals when clicking outside
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal')) {
+        e.target.classList.remove('show');
+        emergencyLocationCoords = null;
+    }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        if (e.target.id === 'item-name') addWardrobeItem();
+        if (e.target.id === 'search-input') searchShop();
+    }
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal').forEach(modal => modal.classList.remove('show'));
+        emergencyLocationCoords = null;
+    }
+});
+
+// Auto-resize textarea
+document.addEventListener('input', function(e) {
+    if (e.target.tagName === 'TEXTAREA') {
+        e.target.style.height = 'auto';
+        e.target.style.height = e.target.scrollHeight + 'px';
+    }
+});
+
+// Initialize app when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    showLoadingScreen();
+    // Set initial shop filter
+    currentShopFilter = 'all';
+    setTimeout(hideLoadingScreen, 2000);
+});
+  </script>
+</body>
+</html>
